@@ -7,12 +7,14 @@ import { ClaimStatus, PaymentStatus } from '@prisma/client';
 import { JwtUser } from 'src/common/interfaces/jwt-user.interface';
 import { ClaimsRepository } from 'src/claims/repositories/claims.repository';
 import { PaymentsRepository } from '../repositories/payments.repository';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class PaymentsService {
   constructor(
     private readonly paymentsRepository: PaymentsRepository,
     private readonly claimsRepository: ClaimsRepository,
+    private readonly prismaService: PrismaService,
   ) {}
 
   async getPaymentByClaimId(claimId: string, user: JwtUser) {
@@ -126,14 +128,26 @@ export class PaymentsService {
       throw new BadRequestException('Claim is not awaiting payment');
     }
 
-    const completedPayment = await this.paymentsRepository.markSuccessful(
-      paymentId,
-      transactionReference,
-    );
+    const completedPayment = await this.prismaService.$transaction(
+      async (tx) => {
+        const updatedPayment = await tx.payment.update({
+          where: { id: paymentId },
+          data: {
+            status: PaymentStatus.SUCCESS,
+            transactionReference,
+            paidAt: new Date(),
+          },
+        });
 
-    await this.claimsRepository.updateClaimStatus(
-      payment.claimId,
-      ClaimStatus.CLOSED,
+        await tx.claim.update({
+          where: { id: payment.claimId },
+          data: {
+            status: ClaimStatus.CLOSED,
+          },
+        });
+
+        return updatedPayment;
+      },
     );
 
     return completedPayment;

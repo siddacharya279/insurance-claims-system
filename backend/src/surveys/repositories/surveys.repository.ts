@@ -16,7 +16,20 @@ export class SurveysRepository {
       data,
       include: {
         claim: true,
-        surveyor: true,
+        surveyor: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            roleId: true,
+            status: true,
+            lastLogin: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
     });
   }
@@ -28,7 +41,20 @@ export class SurveysRepository {
       },
       include: {
         claim: true,
-        surveyor: true,
+        surveyor: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            roleId: true,
+            status: true,
+            lastLogin: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
     });
   }
@@ -39,7 +65,20 @@ export class SurveysRepository {
         claimId,
       },
       include: {
-        surveyor: true,
+        surveyor: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            roleId: true,
+            status: true,
+            lastLogin: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
     });
   }

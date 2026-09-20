@@ -1,6 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { ClaimStatus } from '@prisma/client';
+
 import { PrismaService } from '../../prisma/prisma.service';
+
+const safeUserSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+  phone: true,
+  roleId: true,
+  status: true,
+  lastLogin: true,
+  createdAt: true,
+  updatedAt: true,
+};
 
 @Injectable()
 export class AdjudicationRepository {
@@ -9,7 +22,11 @@ export class AdjudicationRepository {
   async findByClaimId(claimId: string) {
     return this.prisma.adjudication.findUnique({
       where: { claimId },
-      include: { adjuster: true },
+      include: {
+        adjuster: {
+          select: safeUserSelect,
+        },
+      },
     });
   }
 
@@ -17,11 +34,26 @@ export class AdjudicationRepository {
     return this.prisma.claim.findUnique({
       where: { id: claimId },
       include: {
-        customer: true,
+        customer: {
+          select: safeUserSelect,
+        },
         documents: true,
-        survey: { include: { surveyor: true } },
+        survey: {
+          include: {
+            surveyor: {
+              select: safeUserSelect,
+            },
+          },
+        },
         caseAssignment: {
-          include: { caseManager: true, surveyor: true },
+          include: {
+            caseManager: {
+              select: safeUserSelect,
+            },
+            surveyor: {
+              select: safeUserSelect,
+            },
+          },
         },
         workshop: true,
       },
@@ -37,7 +69,12 @@ export class AdjudicationRepository {
   }) {
     return this.prisma.adjudication.create({
       data,
-      include: { adjuster: true, claim: true },
+      include: {
+        adjuster: {
+          select: safeUserSelect,
+        },
+        claim: true,
+      },
     });
   }
 }
