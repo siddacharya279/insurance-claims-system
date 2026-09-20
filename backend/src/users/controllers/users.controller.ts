@@ -38,6 +38,7 @@ export class UsersController {
   }
 
   @Post()
+  @Roles(RoleName.ADMIN)
   @ApiOperation({
     summary: 'Create a new user',
     description: 'Creates a new user with the provided details.',

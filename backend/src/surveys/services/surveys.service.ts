@@ -82,14 +82,11 @@ export class SurveysService {
       throw new BadRequestException('Claim is not pending survey completion');
     }
 
-    await this.claimsRepository.updateClaimStatus(
-      claim.id,
-      ClaimStatus.SURVEY_COMPLETED,
-    );
+    await this.surveysRepository.updateStatus(id, 'COMPLETED');
 
     await this.claimsRepository.updateClaimStatus(
       claim.id,
-      ClaimStatus.ADJUDICATION_PENDING,
+      ClaimStatus.SURVEY_COMPLETED,
     );
 
     return this.surveysRepository.findById(id);

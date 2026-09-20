@@ -25,7 +25,20 @@ export class ClaimsRepository {
   async findAll() {
     return this.prismaService.claim.findMany({
       include: {
-        customer: true,
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            roleId: true,
+            status: true,
+            lastLogin: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
     });
   }
@@ -34,7 +47,20 @@ export class ClaimsRepository {
     return this.prismaService.claim.findMany({
       where: { customerId },
       include: {
-        customer: true,
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            roleId: true,
+            status: true,
+            lastLogin: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
     });
   }
@@ -43,7 +69,21 @@ export class ClaimsRepository {
     return this.prismaService.claim.findUnique({
       where: { id: claimId },
       include: {
-        customer: true,
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            roleId: true,
+            status: true,
+            lastLogin: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        repair: true,
       },
     });
   }

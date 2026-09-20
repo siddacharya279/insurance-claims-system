@@ -11,6 +11,7 @@ import { SurveysModule } from './surveys/surveys.module';
 import { CaseManagementModule } from './case-management/case-management.module';
 import { AdjudicationModule } from './adjudication/adjudication.module';
 import { WorkshopRepairModule } from './workshop-repair/workshop-repair.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { WorkshopRepairModule } from './workshop-repair/workshop-repair.module';
     CaseManagementModule,
     AdjudicationModule,
     WorkshopRepairModule,
+    PaymentsModule,
   ],
   controllers: [],
   providers: [],

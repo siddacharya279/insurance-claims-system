@@ -47,6 +47,12 @@ enum RepairStatus {
   COMPLETED
 }
 
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
 model Role {
   id          String  @id @default(uuid())
   name        String  @unique
@@ -135,6 +141,7 @@ model Claim {
   caseAssignment CaseAssignment?
   adjudication   Adjudication?
   repair         Repair?
+  payment        Payment?
 }
 
 model Document {
@@ -256,3 +263,19 @@ model Repair {
   @@index([workshopId])
   @@index([status])
 }
+
+model Payment {
+  id                  String        @id @default(cuid())
+  claimId             String        @unique
+  amount              Float
+  paymentMethod       String
+  status              PaymentStatus @default(PENDING)
+  transactionReference String?
+  paidAt              DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+} 
