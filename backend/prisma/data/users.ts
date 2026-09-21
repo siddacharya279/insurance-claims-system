@@ -1,44 +1,56 @@
-import { RoleName } from "src/common/enums/roles.enum";
+import { RoleName } from 'src/common/enums/roles.enum';
 
 export const users = [
   // Admins
   {
-    firstName: 'Admin',
-    lastName: 'One',
+    firstName: 'Amit',
+    lastName: 'Mahapatra',
     email: 'admin1@insurance.com',
     role: RoleName.ADMIN,
   },
   {
-    firstName: 'Admin',
-    lastName: 'Two',
+    firstName: 'Nandini',
+    lastName: 'Iyer',
     email: 'admin2@insurance.com',
     role: RoleName.ADMIN,
   },
 
-  // Incident Managers
+  // Case Managers
   {
     firstName: 'Rajesh',
     lastName: 'Sharma',
-    email: 'incident1@insurance.com',
+    email: 'casemanager1@insurance.com',
     role: RoleName.CASE_MANAGER,
   },
   {
-    firstName: 'Priya',
-    lastName: 'Patel',
-    email: 'incident2@insurance.com',
+    firstName: 'Priyanka',
+    lastName: 'Patnaik',
+    email: 'casemanager2@insurance.com',
     role: RoleName.CASE_MANAGER,
   },
   {
     firstName: 'Arun',
     lastName: 'Nair',
-    email: 'incident3@insurance.com',
+    email: 'casemanager3@insurance.com',
+    role: RoleName.CASE_MANAGER,
+  },
+  {
+    firstName: 'Snehal',
+    lastName: 'Kulkarni',
+    email: 'casemanager4@insurance.com',
+    role: RoleName.CASE_MANAGER,
+  },
+  {
+    firstName: 'Vivek',
+    lastName: 'Reddy',
+    email: 'casemanager5@insurance.com',
     role: RoleName.CASE_MANAGER,
   },
 
   // Surveyors
   {
-    firstName: 'Vikram',
-    lastName: 'Singh',
+    firstName: 'Karan',
+    lastName: 'Joshi',
     email: 'surveyor1@insurance.com',
     role: RoleName.SURVEYOR,
   },
@@ -49,9 +61,21 @@ export const users = [
     role: RoleName.SURVEYOR,
   },
   {
-    firstName: 'Karan',
-    lastName: 'Joshi',
+    firstName: 'Sourav',
+    lastName: 'Mishra',
     email: 'surveyor3@insurance.com',
+    role: RoleName.SURVEYOR,
+  },
+  {
+    firstName: 'Meera',
+    lastName: 'Menon',
+    email: 'surveyor4@insurance.com',
+    role: RoleName.SURVEYOR,
+  },
+  {
+    firstName: 'Aditya',
+    lastName: 'Deshmukh',
+    email: 'surveyor5@insurance.com',
     role: RoleName.SURVEYOR,
   },
 
@@ -74,54 +98,142 @@ export const users = [
     email: 'adjuster3@insurance.com',
     role: RoleName.ADJUSTER,
   },
+  {
+    firstName: 'Swati',
+    lastName: 'Bansal',
+    email: 'adjuster4@insurance.com',
+    role: RoleName.ADJUSTER,
+  },
+  {
+    firstName: 'Rohan',
+    lastName: 'Chatterjee',
+    email: 'adjuster5@insurance.com',
+    role: RoleName.ADJUSTER,
+  },
+
+  // Auditors
+  {
+    firstName: 'Ananya',
+    lastName: 'Das',
+    email: 'auditor1@insurance.com',
+    role: RoleName.AUDITOR,
+  },
+  {
+    firstName: 'Manish',
+    lastName: 'Sahu',
+    email: 'auditor2@insurance.com',
+    role: RoleName.AUDITOR,
+  },
+  {
+    firstName: 'Deepak',
+    lastName: 'Pillai',
+    email: 'auditor3@insurance.com',
+    role: RoleName.AUDITOR,
+  },
+  {
+    firstName: 'Kavita',
+    lastName: 'Rao',
+    email: 'auditor4@insurance.com',
+    role: RoleName.AUDITOR,
+  },
+  {
+    firstName: 'Sanjay',
+    lastName: 'Nayak',
+    email: 'auditor5@insurance.com',
+    role: RoleName.AUDITOR,
+  },
+
+  // Workshop Users
+  {
+    firstName: 'Bikash',
+    lastName: 'Mohanty',
+    email: 'workshop1@insurance.com',
+    role: RoleName.WORKSHOP,
+  },
+  {
+    firstName: 'Harish',
+    lastName: 'Kumar',
+    email: 'workshop2@insurance.com',
+    role: RoleName.WORKSHOP,
+  },
+  {
+    firstName: 'Ganesh',
+    lastName: 'Patil',
+    email: 'workshop3@insurance.com',
+    role: RoleName.WORKSHOP,
+  },
+  {
+    firstName: 'Vijay',
+    lastName: 'Krishnan',
+    email: 'workshop4@insurance.com',
+    role: RoleName.WORKSHOP,
+  },
+  {
+    firstName: 'Imran',
+    lastName: 'Khan',
+    email: 'workshop5@insurance.com',
+    role: RoleName.WORKSHOP,
+  },
 
   // Customers
   {
-    firstName: 'Jane',
-    lastName: 'Smith',
-    email: 'jane.smith@email.com',
+    firstName: 'Aarav',
+    lastName: 'Patnaik',
+    email: 'aarav.patnaik@email.com',
     role: RoleName.CUSTOMER,
   },
   {
-    firstName: 'Michael',
-    lastName: 'Brown',
-    email: 'michael.brown@email.com',
+    firstName: 'Ishita',
+    lastName: 'Sharma',
+    email: 'ishita.sharma@email.com',
     role: RoleName.CUSTOMER,
   },
   {
-    firstName: 'Emily',
-    lastName: 'Davis',
-    email: 'emily.davis@email.com',
+    firstName: 'Ritesh',
+    lastName: 'Mishra',
+    email: 'ritesh.mishra@email.com',
     role: RoleName.CUSTOMER,
   },
   {
-    firstName: 'Daniel',
-    lastName: 'Wilson',
-    email: 'daniel.wilson@email.com',
+    firstName: 'Pooja',
+    lastName: 'Nayak',
+    email: 'pooja.nayak@email.com',
     role: RoleName.CUSTOMER,
   },
   {
-    firstName: 'Sophia',
-    lastName: 'Taylor',
-    email: 'sophia.taylor@email.com',
+    firstName: 'Abhishek',
+    lastName: 'Reddy',
+    email: 'abhishek.reddy@email.com',
     role: RoleName.CUSTOMER,
   },
   {
-    firstName: 'William',
-    lastName: 'Anderson',
-    email: 'william.anderson@email.com',
+    firstName: 'Kavya',
+    lastName: 'Iyer',
+    email: 'kavya.iyer@email.com',
     role: RoleName.CUSTOMER,
   },
   {
-    firstName: 'Olivia',
-    lastName: 'Thomas',
-    email: 'olivia.thomas@email.com',
+    firstName: 'Siddharth',
+    lastName: 'Mehta',
+    email: 'siddharth.mehta@email.com',
     role: RoleName.CUSTOMER,
   },
   {
-    firstName: 'James',
-    lastName: 'Jackson',
-    email: 'james.jackson@email.com',
+    firstName: 'Sweta',
+    lastName: 'Behera',
+    email: 'sweta.behera@email.com',
+    role: RoleName.CUSTOMER,
+  },
+  {
+    firstName: 'Nikhil',
+    lastName: 'Desai',
+    email: 'nikhil.desai@email.com',
+    role: RoleName.CUSTOMER,
+  },
+  {
+    firstName: 'Ananya',
+    lastName: 'Choudhury',
+    email: 'ananya.choudhury@email.com',
     role: RoleName.CUSTOMER,
   },
 ];
