@@ -170,6 +170,16 @@ export class ClaimsService {
     if (!workshop.isActive) {
       throw new BadRequestException('Workshop is not active');
     }
+    const allowedRoles = [
+      RoleName.ADMIN,
+      RoleName.CASE_MANAGER,
+      RoleName.CUSTOMER,
+    ];
+
+    if (!allowedRoles.includes(user.role as RoleName)) {
+      throw new UnauthorizedException('Unauthorized Access');
+    }
+
     if (user.role === RoleName.CUSTOMER && user.id !== claim.customerId) {
       throw new UnauthorizedException('Unauthorized Access');
     }

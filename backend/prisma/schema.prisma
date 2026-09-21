@@ -118,6 +118,9 @@ model User {
 
   status UserStatus @default(ACTIVE)
 
+  workshopId String?
+  workshop   Workshop? @relation(fields: [workshopId], references: [id])
+
   lastLogin DateTime?
 
   createdAt DateTime @default(now())
@@ -192,6 +195,7 @@ model Workshop {
   claims       Claim[]
   appointments Appointment[]
   repairs      Repair[]
+  users        User[]
 }
 
 model Appointment {

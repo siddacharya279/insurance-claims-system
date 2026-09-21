@@ -39,4 +39,18 @@ export class WorkshopsRepository {
       where: { id },
     });
   }
+
+  async findUserById(userId: string) {
+    return this.prismaService.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        workshopId: true,
+        role: true,
+        status: true,
+      },
+    });
+  }
 }

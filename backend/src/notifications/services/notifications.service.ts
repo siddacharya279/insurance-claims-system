@@ -30,9 +30,9 @@ export class NotificationsService {
     return this.notificationsRepository.findUnreadByUserId(userId);
   }
 
-  async markAsRead(id: string) {
+  async markAsRead(id: string, userId: string) {
     try {
-      return await this.notificationsRepository.markAsRead(id);
+      return await this.notificationsRepository.markAsRead(id, userId);
     } catch {
       throw new NotFoundException('Notification not found');
     }

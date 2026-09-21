@@ -2,15 +2,18 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { ClaimStatus, NotificationType } from '@prisma/client';
+
 import { SurveysRepository } from '../repositories/surveys.repository';
 import { CreateSurveyDto } from '../dto/create-survey.dto';
+
 import { ClaimsRepository } from 'src/claims/repositories/claims.repository';
 import { RoleName } from 'src/common/enums/roles.enum';
-import { UsersService } from 'src/users/services/users.service';
-import { ClaimStatus, NotificationType } from '@prisma/client';
-import { NotificationsService } from 'src/notifications/services/notifications.service';
 import { JwtUser } from 'src/common/interfaces/jwt-user.interface';
+import { UsersService } from 'src/users/services/users.service';
+import { NotificationsService } from 'src/notifications/services/notifications.service';
 import { AuditService } from 'src/audit/services/audit.service';
 
 @Injectable()
@@ -23,11 +26,17 @@ export class SurveysService {
     private readonly auditService: AuditService,
   ) {}
 
-  async create(createSurveyDto: CreateSurveyDto) {
+  async create(createSurveyDto: CreateSurveyDto, user: JwtUser) {
     const claim = await this.claimsRepository.findById(createSurveyDto.claimId);
 
     if (!claim) {
       throw new NotFoundException('Claim not found');
+    }
+
+    if (user.role !== RoleName.ADMIN && user.role !== RoleName.CASE_MANAGER) {
+      throw new UnauthorizedException(
+        'Only administrators or case managers can create surveys',
+      );
     }
 
     if (
@@ -47,6 +56,10 @@ export class SurveysService {
 
     if (surveyor.role.name !== RoleName.SURVEYOR) {
       throw new BadRequestException('Selected user is not a surveyor');
+    }
+
+    if (surveyor.status !== 'ACTIVE') {
+      throw new BadRequestException('Selected surveyor is not active');
     }
 
     const existing = await this.surveysRepository.findByClaimId(claim.id);
@@ -75,6 +88,15 @@ export class SurveysService {
 
     if (!survey) {
       throw new NotFoundException('Survey not found');
+    }
+
+    if (
+      user.role !== RoleName.ADMIN &&
+      (user.role !== RoleName.SURVEYOR || survey.surveyorId !== user.id)
+    ) {
+      throw new UnauthorizedException(
+        'Only the assigned surveyor or administrator can complete this survey',
+      );
     }
 
     const claim = await this.claimsRepository.findById(survey.claimId);
@@ -111,21 +133,55 @@ export class SurveysService {
     return this.surveysRepository.findById(id);
   }
 
-  async findById(id: string) {
+  async findById(id: string, user: JwtUser) {
     const survey = await this.surveysRepository.findById(id);
 
     if (!survey) {
       throw new NotFoundException('Survey not found');
     }
 
+    const claim = await this.claimsRepository.findById(survey.claimId);
+
+    if (!claim) {
+      throw new NotFoundException('Claim not found');
+    }
+
+    const hasAccess =
+      user.role === RoleName.ADMIN ||
+      user.role === RoleName.CASE_MANAGER ||
+      user.role === RoleName.AUDITOR ||
+      (user.role === RoleName.SURVEYOR && survey.surveyorId === user.id) ||
+      (user.role === RoleName.CUSTOMER && claim.customerId === user.id);
+
+    if (!hasAccess) {
+      throw new UnauthorizedException('Unauthorized Access');
+    }
+
     return survey;
   }
 
-  async findByClaimId(claimId: string) {
+  async findByClaimId(claimId: string, user: JwtUser) {
+    const claim = await this.claimsRepository.findById(claimId);
+
+    if (!claim) {
+      throw new NotFoundException('Claim not found');
+    }
+
     const survey = await this.surveysRepository.findByClaimId(claimId);
 
     if (!survey) {
       throw new NotFoundException('Survey not found');
+    }
+
+    const hasAccess =
+      user.role === RoleName.ADMIN ||
+      user.role === RoleName.CASE_MANAGER ||
+      user.role === RoleName.AUDITOR ||
+      (user.role === RoleName.SURVEYOR && survey.surveyorId === user.id) ||
+      (user.role === RoleName.CUSTOMER && claim.customerId === user.id);
+
+    if (!hasAccess) {
+      throw new UnauthorizedException('Unauthorized Access');
     }
 
     return survey;

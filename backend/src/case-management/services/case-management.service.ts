@@ -34,9 +34,13 @@ export class CaseManagementService {
     }
 
     const claim = await this.claimsRepository.findById(claimId);
-    if (!claim) throw new NotFoundException('Claim not found');
+
+    if (!claim) {
+      throw new NotFoundException('Claim not found');
+    }
 
     const caseManager = await this.usersService.findById(dto.caseManagerId);
+
     if (
       !caseManager ||
       caseManager.role.name !== RoleName.CASE_MANAGER ||
@@ -49,6 +53,7 @@ export class CaseManagementService {
 
     if (dto.surveyorId) {
       const surveyor = await this.usersService.findById(dto.surveyorId);
+
       if (
         !surveyor ||
         surveyor.role.name !== RoleName.SURVEYOR ||
@@ -82,6 +87,13 @@ export class CaseManagementService {
         claimId,
         ClaimStatus.CASE_ASSIGNED,
       );
+
+      await this.auditService.recordClaimStatusChange(
+        claimId,
+        actor.id,
+        claim.status,
+        ClaimStatus.CASE_ASSIGNED,
+      );
     }
 
     await this.notificationsService.create(
@@ -96,12 +108,21 @@ export class CaseManagementService {
 
   async getAssignment(claimId: string, actor: JwtUser) {
     const claim = await this.claimsRepository.findById(claimId);
-    if (!claim) throw new NotFoundException('Claim not found');
+
+    if (!claim) {
+      throw new NotFoundException('Claim not found');
+    }
+
     if (actor.role === RoleName.CUSTOMER && claim.customerId !== actor.id) {
       throw new UnauthorizedException('Unauthorized Access');
     }
+
     const assignment = await this.repository.findByClaimId(claimId);
-    if (!assignment) throw new NotFoundException('Case assignment not found');
+
+    if (!assignment) {
+      throw new NotFoundException('Case assignment not found');
+    }
+
     return assignment;
   }
 }

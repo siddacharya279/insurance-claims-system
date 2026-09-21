@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -30,7 +31,7 @@ export class UsersService {
   }
 
   async create(createUserDto: CreateUserDto) {
-    const { firstName, lastName, email, password, phone, roleId } =
+    const { firstName, lastName, email, password, phone, roleId, workshopId } =
       createUserDto;
 
     const existingUser = await this.prismaService.user.findUnique({
@@ -53,6 +54,32 @@ export class UsersService {
       throw new NotFoundException('Role not found');
     }
 
+    if (role.name === 'WORKSHOP') {
+      if (!workshopId) {
+        throw new BadRequestException(
+          'workshopId is required for WORKSHOP users',
+        );
+      }
+
+      const workshop = await this.prismaService.workshop.findUnique({
+        where: {
+          id: workshopId,
+        },
+      });
+
+      if (!workshop) {
+        throw new NotFoundException('Workshop not found');
+      }
+
+      if (!workshop.isActive) {
+        throw new BadRequestException('Workshop is not active');
+      }
+    } else if (workshopId) {
+      throw new BadRequestException(
+        'workshopId can only be provided for WORKSHOP users',
+      );
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await this.prismaService.user.create({
@@ -63,13 +90,15 @@ export class UsersService {
         password: hashedPassword,
         phone,
         roleId,
+        workshopId: role.name === 'WORKSHOP' ? workshopId : null,
       },
       include: {
-        role: true, //Includes role to response
+        role: true,
+        workshop: true,
       },
     });
 
-    const { password: _, ...result } = user; //removing password here from response
+    const { password: _, ...result } = user;
 
     return result;
   }

@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ClaimStatus, NotificationType } from '@prisma/client';
+
 import { ClaimsRepository } from '../../claims/repositories/claims.repository';
 import { RoleName } from '../../common/enums/roles.enum';
 import { JwtUser } from '../../common/interfaces/jwt-user.interface';
@@ -25,10 +26,13 @@ export class AdjudicationService {
   ) {}
 
   async getForReview(claimId: string, actor: JwtUser) {
-    this.assertAdjuster(actor);
+    this.assertAdjudicator(actor);
 
     const claim = await this.repository.findClaimForReview(claimId);
-    if (!claim) throw new NotFoundException('Claim not found');
+
+    if (!claim) {
+      throw new NotFoundException('Claim not found');
+    }
 
     if (claim.status === ClaimStatus.SURVEY_COMPLETED) {
       await this.claimsRepository.updateClaimStatus(
@@ -53,10 +57,13 @@ export class AdjudicationService {
   }
 
   async adjudicate(claimId: string, dto: AdjudicateClaimDto, actor: JwtUser) {
-    this.assertAdjuster(actor);
+    this.assertAdjudicator(actor);
 
     const claim = await this.repository.findClaimForReview(claimId);
-    if (!claim) throw new NotFoundException('Claim not found');
+
+    if (!claim) {
+      throw new NotFoundException('Claim not found');
+    }
 
     if (claim.status !== ClaimStatus.ADJUDICATION_PENDING) {
       throw new BadRequestException('Claim is not pending adjudication');
@@ -69,6 +76,7 @@ export class AdjudicationService {
     }
 
     const existing = await this.repository.findByClaimId(claimId);
+
     if (existing) {
       throw new BadRequestException('Claim has already been adjudicated');
     }
@@ -85,9 +93,17 @@ export class AdjudicationService {
       );
     }
 
-    const adjuster = await this.usersService.findById(actor.id);
-    if (!adjuster || adjuster.role.name !== RoleName.ADJUSTER) {
-      throw new UnauthorizedException('Authenticated user is not an adjuster');
+    const adjudicator = await this.usersService.findById(actor.id);
+
+    if (
+      !adjudicator ||
+      ![RoleName.ADJUSTER, RoleName.ADMIN].includes(
+        adjudicator.role.name as RoleName,
+      )
+    ) {
+      throw new UnauthorizedException(
+        'Authenticated user is not authorized to adjudicate claims',
+      );
     }
 
     const adjudication = await this.repository.create({
@@ -114,8 +130,8 @@ export class AdjudicationService {
       }),
       description:
         dto.decision === ClaimStatus.APPROVED
-          ? `Claim ${claim.claimNumber} approved by adjuster`
-          : `Claim ${claim.claimNumber} rejected by adjuster`,
+          ? `Claim ${claim.claimNumber} approved by adjudicator`
+          : `Claim ${claim.claimNumber} rejected by adjudicator`,
     });
 
     const notificationType =
@@ -138,7 +154,7 @@ export class AdjudicationService {
     return adjudication;
   }
 
-  private assertAdjuster(actor: JwtUser) {
+  private assertAdjudicator(actor: JwtUser) {
     if (actor.role !== RoleName.ADJUSTER && actor.role !== RoleName.ADMIN) {
       throw new UnauthorizedException(
         'Only adjusters or administrators can adjudicate claims',

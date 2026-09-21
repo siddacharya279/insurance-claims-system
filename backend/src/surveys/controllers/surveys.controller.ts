@@ -5,14 +5,12 @@ import {
   Param,
   Patch,
   Post,
-  UseGuards,
   Request,
+  UseGuards,
 } from '@nestjs/common';
-
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-
 import { SurveysService } from '../services/surveys.service';
 import { CreateSurveyDto } from '../dto/create-survey.dto';
 import { JwtUser } from 'src/common/interfaces/jwt-user.interface';
@@ -28,24 +26,30 @@ export class SurveysController {
   @ApiOperation({
     summary: 'Create survey',
   })
-  create(@Body() createSurveyDto: CreateSurveyDto) {
-    return this.surveysService.create(createSurveyDto);
+  create(
+    @Body() createSurveyDto: CreateSurveyDto,
+    @Request() req: { user: JwtUser },
+  ) {
+    return this.surveysService.create(createSurveyDto, req.user);
   }
 
   @Get(':id')
   @ApiOperation({
     summary: 'Get survey by id',
   })
-  findById(@Param('id') id: string) {
-    return this.surveysService.findById(id);
+  findById(@Param('id') id: string, @Request() req: { user: JwtUser }) {
+    return this.surveysService.findById(id, req.user);
   }
 
   @Get('claim/:claimId')
   @ApiOperation({
     summary: 'Get survey by claim id',
   })
-  findByClaimId(@Param('claimId') claimId: string) {
-    return this.surveysService.findByClaimId(claimId);
+  findByClaimId(
+    @Param('claimId') claimId: string,
+    @Request() req: { user: JwtUser },
+  ) {
+    return this.surveysService.findByClaimId(claimId, req.user);
   }
 
   @Patch(':id/complete')

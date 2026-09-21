@@ -45,9 +45,12 @@ export class NotificationsRepository {
     });
   }
 
-  async markAsRead(id: string) {
+  async markAsRead(id: string, recipientUserId: string) {
     return this.prismaService.notification.update({
-      where: { id },
+      where: {
+        id,
+        recipientUserId,
+      },
       data: {
         status: NotificationStatus.READ,
         readAt: new Date(),

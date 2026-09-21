@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -21,34 +22,55 @@ export class WorkshopRepairService {
     private readonly auditService: AuditService,
   ) {}
 
-  async getRepairByClaimId(claimId: string, user: JwtUser) {
+  private async assertWorkshopAccess(
+    workshopId: string,
+    user: JwtUser,
+  ): Promise<void> {
     if (user.role !== 'WORKSHOP') {
-      throw new BadRequestException(
-        'Only workshop users can view repair details',
+      throw new ForbiddenException(
+        'Only workshop users can access repair details',
       );
     }
 
+    const workshopUser = await this.workshopRepository.findUserById(user.id);
+
+    if (!workshopUser) {
+      throw new ForbiddenException('Workshop user not found');
+    }
+
+    if (!workshopUser.workshopId) {
+      throw new ForbiddenException(
+        'Workshop user is not assigned to a workshop',
+      );
+    }
+
+    if (workshopUser.workshopId !== workshopId) {
+      throw new ForbiddenException(
+        'You are not authorized to access this workshop repair',
+      );
+    }
+  }
+
+  async getRepairByClaimId(claimId: string, user: JwtUser) {
     const repair = await this.repairRepository.findByClaimId(claimId);
 
     if (!repair) {
       throw new NotFoundException('Repair not found for this claim');
     }
 
+    await this.assertWorkshopAccess(repair.workshopId, user);
+
     return repair;
   }
 
   async getRepairById(repairId: string, user: JwtUser) {
-    if (user.role !== 'WORKSHOP') {
-      throw new BadRequestException(
-        'Only workshop users can view repair details',
-      );
-    }
-
     const repair = await this.repairRepository.findById(repairId);
 
     if (!repair) {
       throw new NotFoundException('Repair not found');
     }
+
+    await this.assertWorkshopAccess(repair.workshopId, user);
 
     return repair;
   }
@@ -60,15 +82,13 @@ export class WorkshopRepairService {
     repairNotes: string | undefined,
     user: JwtUser,
   ) {
-    if (user.role !== 'WORKSHOP') {
-      throw new BadRequestException('Only workshop users can update repairs');
-    }
-
     const repair = await this.repairRepository.findById(repairId);
 
     if (!repair) {
       throw new NotFoundException('Repair not found');
     }
+
+    await this.assertWorkshopAccess(repair.workshopId, user);
 
     if (repair.claim.status !== ClaimStatus.REPAIR_IN_PROGRESS) {
       throw new BadRequestException(
@@ -101,7 +121,7 @@ export class WorkshopRepairService {
     user: JwtUser,
   ) {
     if (user.role !== 'WORKSHOP') {
-      throw new BadRequestException('Only workshop users can start repairs');
+      throw new ForbiddenException('Only workshop users can start repairs');
     }
 
     const claim = await this.claimsRepository.findById(claimId);
@@ -117,6 +137,8 @@ export class WorkshopRepairService {
     if (!claim.workshopId) {
       throw new BadRequestException('No workshop is assigned to this claim');
     }
+
+    await this.assertWorkshopAccess(claim.workshopId, user);
 
     const existing = await this.repairRepository.findByClaimId(claimId);
 
@@ -176,14 +198,13 @@ export class WorkshopRepairService {
     repairNotes: string | undefined,
     user: JwtUser,
   ) {
-    if (user.role !== 'WORKSHOP') {
-      throw new BadRequestException('Only workshop users can complete repairs');
-    }
     const repair = await this.repairRepository.findById(repairId);
 
     if (!repair) {
       throw new NotFoundException('Repair not found');
     }
+
+    await this.assertWorkshopAccess(repair.workshopId, user);
 
     if (repair.claim.status !== ClaimStatus.REPAIR_IN_PROGRESS) {
       throw new BadRequestException(

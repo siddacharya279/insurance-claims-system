@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsNotEmpty,
@@ -53,4 +53,12 @@ export class CreateUserDto {
   })
   @IsUUID()
   roleId!: string;
+
+  @ApiPropertyOptional({
+    description: 'Workshop assigned to the user. Required for WORKSHOP users.',
+    example: 'cmtyn9pvk00001du99842nxqs',
+  })
+  @IsOptional()
+  @IsString()
+  workshopId?: string;
 }
