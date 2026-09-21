@@ -3,7 +3,7 @@ import {
   Get,
   Query,
   Request,
-  UnauthorizedException,
+  ForbiddenException,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -27,7 +27,7 @@ export class ReportingController {
     ];
 
     if (!allowedRoles.includes(user.role as RoleName)) {
-      throw new UnauthorizedException(
+      throw new ForbiddenException(
         'You are not authorized to access reporting',
       );
     }

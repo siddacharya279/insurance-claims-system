@@ -189,6 +189,13 @@ export class WorkshopRepairService {
       ClaimStatus.REPAIR_IN_PROGRESS,
     );
 
+    await this.auditService.recordClaimStatusChange(
+      claimId,
+      user.id,
+      ClaimStatus.APPROVED,
+      ClaimStatus.REPAIR_IN_PROGRESS,
+    );
+
     return this.repairRepository.findById(repair.id);
   }
 
@@ -238,8 +245,22 @@ export class WorkshopRepairService {
       ClaimStatus.REPAIR_COMPLETED,
     );
 
+    await this.auditService.recordClaimStatusChange(
+      repair.claimId,
+      user.id,
+      ClaimStatus.REPAIR_IN_PROGRESS,
+      ClaimStatus.REPAIR_COMPLETED,
+    );
+
     await this.claimsRepository.updateClaimStatus(
       repair.claimId,
+      ClaimStatus.PAYMENT_PENDING,
+    );
+
+    await this.auditService.recordClaimStatusChange(
+      repair.claimId,
+      user.id,
+      ClaimStatus.REPAIR_COMPLETED,
       ClaimStatus.PAYMENT_PENDING,
     );
 

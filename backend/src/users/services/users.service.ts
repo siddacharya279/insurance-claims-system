@@ -119,8 +119,20 @@ export class UsersService {
       where: {
         id,
       },
-      include: {
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        roleId: true,
+        status: true,
+        workshopId: true,
+        lastLogin: true,
+        createdAt: true,
+        updatedAt: true,
         role: true,
+        workshop: true,
       },
     });
   }
