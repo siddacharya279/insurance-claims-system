@@ -21,13 +21,17 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    if (user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('User account is not active');
     }
 
     const passwordMatched = await bcrypt.compare(password, user.password);
 
     if (!passwordMatched) {
-      throw new UnauthorizedException('Password is Invalid');
+      throw new UnauthorizedException('Invalid email or password');
     }
 
     //create jwt payload

@@ -53,6 +53,22 @@ enum PaymentStatus {
   FAILED
 }
 
+enum NotificationStatus {
+  UNREAD
+  READ
+}
+
+enum NotificationType {
+  CLAIM_ASSIGNED
+  SURVEY_COMPLETED
+  CLAIM_APPROVED
+  CLAIM_REJECTED
+  REPAIR_STARTED
+  REPAIR_COMPLETED
+  PAYMENT_PENDING
+  PAYMENT_COMPLETED
+}
+
 model Role {
   id          String  @id @default(uuid())
   name        String  @unique
@@ -112,6 +128,8 @@ model User {
   caseManagerAssignments CaseAssignment[] @relation("CaseManagerAssignments")
   surveyorAssignments    CaseAssignment[] @relation("SurveyorAssignments")
   adjudications          Adjudication[]   @relation("AdjusterAdjudications")
+  notifications          Notification[]
+  auditLogs              AuditLog[]
 }
 
 model Claim {
@@ -142,6 +160,8 @@ model Claim {
   adjudication   Adjudication?
   repair         Repair?
   payment        Payment?
+  notifications  Notification[]
+  auditLogs      AuditLog[]
 }
 
 model Document {
@@ -265,17 +285,52 @@ model Repair {
 }
 
 model Payment {
-  id                  String        @id @default(cuid())
-  claimId             String        @unique
-  amount              Float
-  paymentMethod       String
-  status              PaymentStatus @default(PENDING)
+  id                   String        @id @default(cuid())
+  claimId              String        @unique
+  amount               Float
+  paymentMethod        String
+  status               PaymentStatus @default(PENDING)
   transactionReference String?
-  paidAt              DateTime?
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  paidAt               DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
 
   claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
 
   @@index([status])
-} 
+}
+
+model Notification {
+  id              String             @id @default(cuid())
+  claimId         String
+  recipientUserId String
+  type            NotificationType
+  message         String
+  status          NotificationStatus @default(UNREAD)
+  createdAt       DateTime           @default(now())
+  readAt          DateTime?
+
+  claim     Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  recipient User  @relation(fields: [recipientUserId], references: [id])
+
+  @@index([recipientUserId, status])
+  @@index([claimId])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  claimId     String?
+  actorUserId String?
+  action      String
+  oldValue    String?
+  newValue    String?
+  description String?
+  createdAt   DateTime @default(now())
+
+  claim Claim? @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  actor User?  @relation(fields: [actorUserId], references: [id])
+
+  @@index([claimId])
+  @@index([actorUserId])
+  @@index([createdAt])
+}

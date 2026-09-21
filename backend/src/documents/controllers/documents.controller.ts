@@ -46,9 +46,25 @@ export class DocumentsController {
         destination: './uploads',
         filename: (req, file, callback) => {
           const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          callback(null, uniqueName + extname(file.originalname));
+
+          callback(null, uniqueName + extname(file.originalname).toLowerCase());
         },
       }),
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+      },
+      fileFilter: (req, file, callback) => {
+        const allowedMimeTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+
+        if (!allowedMimeTypes.includes(file.mimetype)) {
+          return callback(
+            new Error('Only PDF, JPEG and PNG files are allowed'),
+            false,
+          );
+        }
+
+        callback(null, true);
+      },
     }),
   )
   @UseGuards(JwtAuthGuard)

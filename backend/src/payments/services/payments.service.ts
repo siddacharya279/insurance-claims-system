@@ -3,11 +3,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ClaimStatus, PaymentStatus } from '@prisma/client';
+import { ClaimStatus, NotificationType, PaymentStatus } from '@prisma/client';
 import { JwtUser } from 'src/common/interfaces/jwt-user.interface';
 import { ClaimsRepository } from 'src/claims/repositories/claims.repository';
 import { PaymentsRepository } from '../repositories/payments.repository';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { NotificationsService } from 'src/notifications/services/notifications.service';
+import { AuditService } from 'src/audit/services/audit.service';
 
 @Injectable()
 export class PaymentsService {
@@ -15,6 +17,8 @@ export class PaymentsService {
     private readonly paymentsRepository: PaymentsRepository,
     private readonly claimsRepository: ClaimsRepository,
     private readonly prismaService: PrismaService,
+    private readonly notificationsService: NotificationsService,
+    private readonly auditService: AuditService,
   ) {}
 
   async getPaymentByClaimId(claimId: string, user: JwtUser) {
@@ -90,11 +94,32 @@ export class PaymentsService {
       );
     }
 
-    return this.paymentsRepository.create({
+    const payment = await this.paymentsRepository.create({
       claimId,
       amount: claim.repair.finalBillAmount,
       paymentMethod,
     });
+
+    await this.auditService.record({
+      claimId: claim.id,
+      actorUserId: user.id,
+      action: 'PAYMENT_CREATED',
+      newValue: JSON.stringify({
+        paymentId: payment.id,
+        amount: payment.amount,
+        paymentMethod,
+      }),
+      description: `Payment initiated for claim ${claim.claimNumber}`,
+    });
+
+    await this.notificationsService.create(
+      claim.id,
+      claim.customerId,
+      NotificationType.PAYMENT_PENDING,
+      `Payment is pending for claim ${claim.claimNumber}.`,
+    );
+
+    return payment;
   }
 
   async completePayment(
@@ -148,6 +173,27 @@ export class PaymentsService {
 
         return updatedPayment;
       },
+    );
+
+    await this.auditService.record({
+      claimId: payment.claimId,
+      actorUserId: user.id,
+      action: 'PAYMENT_COMPLETED',
+      newValue: JSON.stringify({
+        paymentId: completedPayment.id,
+        amount: completedPayment.amount,
+        paymentMethod: completedPayment.paymentMethod,
+        transactionReference,
+        paidAt: completedPayment.paidAt,
+      }),
+      description: `Payment for claim ${payment.claim.claimNumber} completed`,
+    });
+
+    await this.notificationsService.create(
+      payment.claimId,
+      payment.claim.customerId,
+      NotificationType.PAYMENT_COMPLETED,
+      `Payment for claim ${payment.claim.claimNumber} has been completed.`,
     );
 
     return completedPayment;

@@ -12,6 +12,8 @@ import { CaseManagementModule } from './case-management/case-management.module';
 import { AdjudicationModule } from './adjudication/adjudication.module';
 import { WorkshopRepairModule } from './workshop-repair/workshop-repair.module';
 import { PaymentsModule } from './payments/payments.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { PaymentsModule } from './payments/payments.module';
     AdjudicationModule,
     WorkshopRepairModule,
     PaymentsModule,
+    NotificationsModule,
+    AuditModule,
   ],
   controllers: [],
   providers: [],

@@ -11,12 +11,14 @@ import { JwtUser } from 'src/common/interfaces/jwt-user.interface';
 import { ClaimStatus } from '@prisma/client';
 import { UpdateClaimStatusDto } from '../dto/update-claim-status.dto';
 import { WorkshopsRepository } from 'src/workshops/repositories/workshops.repository';
+import { AuditService } from 'src/audit/services/audit.service';
 
 @Injectable()
 export class ClaimsService {
   constructor(
     private readonly claimsRepository: ClaimsRepository,
     private readonly workshopsRepository: WorkshopsRepository,
+    private readonly auditService: AuditService,
   ) {}
 
   async create(createClaimDto: CreateClaimDto, customerId: string) {
@@ -92,7 +94,19 @@ export class ClaimsService {
       throw new BadRequestException('Invalid status transition');
     }
 
-    return this.claimsRepository.updateClaimStatus(claimId, dto.status);
+    const updatedClaim = await this.claimsRepository.updateClaimStatus(
+      claimId,
+      dto.status,
+    );
+
+    await this.auditService.recordClaimStatusChange(
+      claimId,
+      user.id,
+      claim.status,
+      dto.status,
+    );
+
+    return updatedClaim;
   }
 
   private isValidTransition(current: ClaimStatus, next: ClaimStatus): boolean {

@@ -4,9 +4,11 @@ import { UsersModule } from '../users/users.module';
 import { AdjudicationController } from './controllers/adjudication.controller';
 import { AdjudicationRepository } from './repositories/adjudication.repository';
 import { AdjudicationService } from './services/adjudication.service';
+import { NotificationsModule } from 'src/notifications/notifications.module';
+import { AuditModule } from 'src/audit/audit.module';
 
 @Module({
-  imports: [ClaimsModule, UsersModule],
+  imports: [ClaimsModule, UsersModule, NotificationsModule, AuditModule],
   controllers: [AdjudicationController],
   providers: [AdjudicationService, AdjudicationRepository],
 })

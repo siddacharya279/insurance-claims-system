@@ -4,13 +4,15 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ClaimStatus } from '@prisma/client';
+import { ClaimStatus, NotificationType } from '@prisma/client';
 import { ClaimsRepository } from '../../claims/repositories/claims.repository';
 import { RoleName } from '../../common/enums/roles.enum';
 import { JwtUser } from '../../common/interfaces/jwt-user.interface';
 import { UsersService } from '../../users/services/users.service';
 import { AdjudicateClaimDto } from '../dto/adjudicate-claim.dto';
 import { AdjudicationRepository } from '../repositories/adjudication.repository';
+import { NotificationsService } from 'src/notifications/services/notifications.service';
+import { AuditService } from 'src/audit/services/audit.service';
 
 @Injectable()
 export class AdjudicationService {
@@ -18,6 +20,8 @@ export class AdjudicationService {
     private readonly repository: AdjudicationRepository,
     private readonly claimsRepository: ClaimsRepository,
     private readonly usersService: UsersService,
+    private readonly notificationsService: NotificationsService,
+    private readonly auditService: AuditService,
   ) {}
 
   async getForReview(claimId: string, actor: JwtUser) {
@@ -26,12 +30,23 @@ export class AdjudicationService {
     const claim = await this.repository.findClaimForReview(claimId);
     if (!claim) throw new NotFoundException('Claim not found');
 
+    if (claim.status === ClaimStatus.SURVEY_COMPLETED) {
+      await this.claimsRepository.updateClaimStatus(
+        claimId,
+        ClaimStatus.ADJUDICATION_PENDING,
+      );
+
+      claim.status = ClaimStatus.ADJUDICATION_PENDING;
+    }
+
     if (claim.status !== ClaimStatus.ADJUDICATION_PENDING) {
       throw new BadRequestException('Claim is not pending adjudication');
     }
 
     if (!claim.survey) {
-      throw new BadRequestException('Survey assessment is required before adjudication');
+      throw new BadRequestException(
+        'Survey assessment is required before adjudication',
+      );
     }
 
     return claim;
@@ -48,7 +63,9 @@ export class AdjudicationService {
     }
 
     if (!claim.survey) {
-      throw new BadRequestException('Survey assessment is required before adjudication');
+      throw new BadRequestException(
+        'Survey assessment is required before adjudication',
+      );
     }
 
     const existing = await this.repository.findByClaimId(claimId);
@@ -57,11 +74,15 @@ export class AdjudicationService {
     }
 
     if (dto.decision === ClaimStatus.APPROVED && dto.approvedAmount == null) {
-      throw new BadRequestException('Approved amount is required for an approved claim');
+      throw new BadRequestException(
+        'Approved amount is required for an approved claim',
+      );
     }
 
     if (dto.decision === ClaimStatus.REJECTED && dto.approvedAmount != null) {
-      throw new BadRequestException('Approved amount must not be supplied for a rejected claim');
+      throw new BadRequestException(
+        'Approved amount must not be supplied for a rejected claim',
+      );
     }
 
     const adjuster = await this.usersService.findById(actor.id);
@@ -79,12 +100,49 @@ export class AdjudicationService {
 
     await this.claimsRepository.updateClaimStatus(claimId, dto.decision);
 
+    await this.auditService.record({
+      claimId: claim.id,
+      actorUserId: actor.id,
+      action:
+        dto.decision === ClaimStatus.APPROVED
+          ? 'ADJUDICATION_APPROVED'
+          : 'ADJUDICATION_REJECTED',
+      newValue: JSON.stringify({
+        decision: dto.decision,
+        approvedAmount: dto.approvedAmount ?? null,
+        decisionReason: dto.decisionReason ?? null,
+      }),
+      description:
+        dto.decision === ClaimStatus.APPROVED
+          ? `Claim ${claim.claimNumber} approved by adjuster`
+          : `Claim ${claim.claimNumber} rejected by adjuster`,
+    });
+
+    const notificationType =
+      dto.decision === ClaimStatus.APPROVED
+        ? NotificationType.CLAIM_APPROVED
+        : NotificationType.CLAIM_REJECTED;
+
+    const message =
+      dto.decision === ClaimStatus.APPROVED
+        ? `Claim ${claim.claimNumber} has been approved.`
+        : `Claim ${claim.claimNumber} has been rejected.`;
+
+    await this.notificationsService.create(
+      claim.id,
+      claim.customerId,
+      notificationType,
+      message,
+    );
+
     return adjudication;
   }
 
   private assertAdjuster(actor: JwtUser) {
     if (actor.role !== RoleName.ADJUSTER && actor.role !== RoleName.ADMIN) {
-      throw new UnauthorizedException('Only adjusters or administrators can adjudicate claims');
+      throw new UnauthorizedException(
+        'Only adjusters or administrators can adjudicate claims',
+      );
     }
   }
 }

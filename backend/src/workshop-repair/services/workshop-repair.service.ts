@@ -6,8 +6,10 @@ import {
 import { WorkshopRepairRepository } from '../repositories/workshop-repair.repository';
 import { ClaimsRepository } from 'src/claims/repositories/claims.repository';
 import { WorkshopsRepository } from 'src/workshops/repositories/workshops.repository';
-import { ClaimStatus, RepairStatus } from '@prisma/client';
+import { ClaimStatus, NotificationType, RepairStatus } from '@prisma/client';
 import { JwtUser } from 'src/common/interfaces/jwt-user.interface';
+import { NotificationsService } from 'src/notifications/services/notifications.service';
+import { AuditService } from 'src/audit/services/audit.service';
 
 @Injectable()
 export class WorkshopRepairService {
@@ -15,6 +17,8 @@ export class WorkshopRepairService {
     private readonly repairRepository: WorkshopRepairRepository,
     private readonly claimsRepository: ClaimsRepository,
     private readonly workshopRepository: WorkshopsRepository,
+    private readonly notificationsService: NotificationsService,
+    private readonly auditService: AuditService,
   ) {}
 
   async getRepairByClaimId(claimId: string, user: JwtUser) {
@@ -140,6 +144,24 @@ export class WorkshopRepairService {
       },
     );
 
+    await this.auditService.record({
+      claimId: claim.id,
+      actorUserId: user.id,
+      action: 'REPAIR_STARTED',
+      newValue: JSON.stringify({
+        workshopId: claim.workshopId,
+        expectedDeliveryDate: expectedDeliveryDate ?? null,
+      }),
+      description: `Repair for claim ${claim.claimNumber} started`,
+    });
+
+    await this.notificationsService.create(
+      claim.id,
+      claim.customerId,
+      NotificationType.REPAIR_STARTED,
+      `Repair for claim ${claim.claimNumber} has started.`,
+    );
+
     await this.claimsRepository.updateClaimStatus(
       claimId,
       ClaimStatus.REPAIR_IN_PROGRESS,
@@ -183,10 +205,34 @@ export class WorkshopRepairService {
       repairNotes,
     });
 
+    await this.notificationsService.create(
+      repair.claim.id,
+      repair.claim.customerId,
+      NotificationType.REPAIR_COMPLETED,
+      `Repair for claim ${repair.claim.claimNumber} has been completed.`,
+    );
+
+    await this.claimsRepository.updateClaimStatus(
+      repair.claimId,
+      ClaimStatus.REPAIR_COMPLETED,
+    );
+
     await this.claimsRepository.updateClaimStatus(
       repair.claimId,
       ClaimStatus.PAYMENT_PENDING,
     );
+
+    await this.auditService.record({
+      claimId: repair.claim.id,
+      actorUserId: user.id,
+      action: 'REPAIR_COMPLETED',
+      newValue: JSON.stringify({
+        finalBillAmount,
+        repairNotes: repairNotes ?? null,
+        completedAt: new Date(),
+      }),
+      description: `Repair for claim ${repair.claim.claimNumber} completed`,
+    });
 
     return this.repairRepository.findById(repairId);
   }

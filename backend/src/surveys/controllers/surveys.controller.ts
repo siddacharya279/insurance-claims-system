@@ -6,6 +6,7 @@ import {
   Patch,
   Post,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -14,6 +15,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 import { SurveysService } from '../services/surveys.service';
 import { CreateSurveyDto } from '../dto/create-survey.dto';
+import { JwtUser } from 'src/common/interfaces/jwt-user.interface';
 
 @ApiTags('Surveys')
 @ApiBearerAuth()
@@ -50,7 +52,7 @@ export class SurveysController {
   @ApiOperation({
     summary: 'Complete survey',
   })
-  complete(@Param('id') id: string) {
-    return this.surveysService.complete(id);
+  complete(@Param('id') id: string, @Request() req: { user: JwtUser }) {
+    return this.surveysService.complete(id, req.user);
   }
 }
