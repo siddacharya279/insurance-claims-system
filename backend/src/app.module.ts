@@ -14,6 +14,7 @@ import { WorkshopRepairModule } from './workshop-repair/workshop-repair.module';
 import { PaymentsModule } from './payments/payments.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AuditModule } from './audit/audit.module';
+import { ReportingModule } from './reporting/reporting.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { AuditModule } from './audit/audit.module';
     PaymentsModule,
     NotificationsModule,
     AuditModule,
+    ReportingModule,
   ],
   controllers: [],
   providers: [],
