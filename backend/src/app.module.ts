@@ -15,9 +15,14 @@ import { PaymentsModule } from './payments/payments.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AuditModule } from './audit/audit.module';
 import { ReportingModule } from './reporting/reporting.module';
+import { HealthModule } from './health/health.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     PrismaModule,
     UsersModule,
     RolesModule,
@@ -34,6 +39,7 @@ import { ReportingModule } from './reporting/reporting.module';
     NotificationsModule,
     AuditModule,
     ReportingModule,
+    HealthModule,
   ],
   controllers: [],
   providers: [],
