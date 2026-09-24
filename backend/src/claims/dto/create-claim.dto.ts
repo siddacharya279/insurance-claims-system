@@ -1,9 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsDateString,
-  IsNotEmpty,
-  IsString,
-} from 'class-validator';
+import { IsDateString, IsNotEmpty, IsString } from 'class-validator';
 
 export class CreateClaimDto {
   @ApiProperty({
@@ -32,4 +28,12 @@ export class CreateClaimDto {
   @IsString()
   @IsNotEmpty()
   incidentLocation!: string;
+
+  @ApiProperty({
+    example: 'policy-id',
+    description: 'Insurance policy covering this claim',
+  })
+  @IsString()
+  @IsNotEmpty()
+  policyId!: string;
 }

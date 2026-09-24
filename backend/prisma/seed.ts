@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { users } from './data/users';
 import { workshops } from './data/workshops';
 import { policies } from './data/policies';
+import { rentalVehicles } from './data/rental-vehicles';
 
 const prisma = new PrismaClient();
 
@@ -246,6 +247,39 @@ async function main() {
   console.log('Policies and coverages seeded successfully');
 
   // ------------------------------------------------------------
+  // Rental Vehicles
+  // ------------------------------------------------------------
+
+  for (const vehicle of rentalVehicles) {
+    await prisma.rentalVehicle.upsert({
+      where: {
+        make_model: {
+          make: vehicle.make,
+          model: vehicle.model,
+        },
+      },
+      update: {
+        vehicleType: vehicle.vehicleType,
+        dailyRate: vehicle.dailyRate,
+        securityDeposit: vehicle.securityDeposit,
+        isAvailable: vehicle.isAvailable,
+        description: vehicle.description,
+      },
+      create: {
+        vehicleType: vehicle.vehicleType,
+        make: vehicle.make,
+        model: vehicle.model,
+        dailyRate: vehicle.dailyRate,
+        securityDeposit: vehicle.securityDeposit,
+        isAvailable: vehicle.isAvailable,
+        description: vehicle.description,
+      },
+    });
+  }
+
+  console.log('Rental vehicles seeded successfully');
+
+  // ------------------------------------------------------------
   // Summary
   // ------------------------------------------------------------
 
@@ -259,11 +293,13 @@ async function main() {
   const workshopCount = await prisma.workshop.count();
   const policyCount = await prisma.policy.count();
   const coverageCount = await prisma.coverage.count();
+  const rentalVehicleCount = await prisma.rentalVehicle.count();
 
   console.log(`Workshops: ${workshopCount}`);
   console.log(`Users by role: ${userCounts.length} role groups`);
   console.log(`Policies: ${policyCount}`);
   console.log(`Coverages: ${coverageCount}`);
+  console.log(`Rental Vehicles: ${rentalVehicleCount}`);
   console.log('Seed completed successfully');
 }
 

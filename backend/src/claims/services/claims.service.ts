@@ -12,17 +12,48 @@ import { ClaimStatus } from '@prisma/client';
 import { UpdateClaimStatusDto } from '../dto/update-claim-status.dto';
 import { WorkshopsRepository } from 'src/workshops/repositories/workshops.repository';
 import { AuditService } from 'src/audit/services/audit.service';
+import { PoliciesRepository } from 'src/policies/repositories/policies.repository';
 
 @Injectable()
 export class ClaimsService {
   constructor(
     private readonly claimsRepository: ClaimsRepository,
     private readonly workshopsRepository: WorkshopsRepository,
+    private readonly policiesRepository: PoliciesRepository,
     private readonly auditService: AuditService,
   ) {}
 
   async create(createClaimDto: CreateClaimDto, customerId: string) {
+    const policy = await this.policiesRepository.findById(
+      createClaimDto.policyId,
+    );
+
+    if (!policy) {
+      throw new NotFoundException('Policy not found');
+    }
+
+    if (policy.customerId !== customerId) {
+      throw new UnauthorizedException(
+        'You can only create a claim against your own policy',
+      );
+    }
+
+    if (policy.status !== 'ACTIVE') {
+      throw new BadRequestException(
+        'Claims can only be created against an active policy',
+      );
+    }
+
+    const incidentDate = new Date(createClaimDto.incidentDate);
+
+    if (incidentDate < policy.startDate || incidentDate > policy.endDate) {
+      throw new BadRequestException(
+        'Incident date is outside the policy coverage period',
+      );
+    }
+
     const claimNumber = await this.generateClaimNumber();
+
     return this.claimsRepository.create({
       ...createClaimDto,
       customerId,

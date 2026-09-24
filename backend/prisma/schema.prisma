@@ -75,6 +75,13 @@ enum PolicyStatus {
   CANCELLED
 }
 
+enum RentalSelectionStatus {
+  SELECTED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
 model Role {
   id          String  @id @default(uuid())
   name        String  @unique
@@ -163,15 +170,18 @@ model Claim {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  documents      Document[]
-  appointment    Appointment?
-  survey         Survey?
-  caseAssignment CaseAssignment?
-  adjudication   Adjudication?
-  repair         Repair?
-  payment        Payment?
-  notifications  Notification[]
-  auditLogs      AuditLog[]
+  documents              Document[]
+  appointment            Appointment?
+  survey                 Survey?
+  caseAssignment         CaseAssignment?
+  adjudication           Adjudication?
+  repair                 Repair?
+  payment                Payment?
+  notifications          Notification[]
+  auditLogs              AuditLog[]
+  policyId               String?
+  policy                 Policy?                 @relation(fields: [policyId], references: [id])
+  rentalVehicleSelection RentalVehicleSelection?
 }
 
 model Document {
@@ -361,6 +371,7 @@ model Policy {
   coverages    Coverage[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+  claims       Claim[]
 
   @@index([customerId])
   @@index([status])
@@ -382,4 +393,42 @@ model Coverage {
 
   @@index([policyId])
   @@index([coverageType])
+}
+
+model RentalVehicle {
+  id              String                   @id @default(cuid())
+  vehicleType     String
+  make            String
+  model           String
+  dailyRate       Float
+  securityDeposit Float?
+  isAvailable     Boolean                  @default(true)
+  description     String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  selections      RentalVehicleSelection[]
+
+  @@unique([make, model])
+  @@index([vehicleType])
+  @@index([isAvailable])
+}
+
+model RentalVehicleSelection {
+  id              String                @id @default(cuid())
+  claimId         String                @unique
+  rentalVehicleId String
+  startDate       DateTime
+  endDate         DateTime?
+  dailyRate       Float
+  estimatedTotal  Float?
+  status          RentalSelectionStatus @default(SELECTED)
+  notes           String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  claim         Claim         @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  rentalVehicle RentalVehicle @relation(fields: [rentalVehicleId], references: [id])
+
+  @@index([rentalVehicleId])
+  @@index([status])
 }

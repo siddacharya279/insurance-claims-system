@@ -18,6 +18,7 @@ import { ReportingModule } from './reporting/reporting.module';
 import { HealthModule } from './health/health.module';
 import { ConfigModule } from '@nestjs/config';
 import { PoliciesModule } from './policies/policies.module';
+import { RentalVehiclesModule } from './rental-vehicles/rental-vehicles.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { PoliciesModule } from './policies/policies.module';
     ReportingModule,
     HealthModule,
     PoliciesModule,
+    RentalVehiclesModule,
   ],
   controllers: [],
   providers: [],
