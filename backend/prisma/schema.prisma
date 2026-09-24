@@ -69,6 +69,12 @@ enum NotificationType {
   PAYMENT_COMPLETED
 }
 
+enum PolicyStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
 model Role {
   id          String  @id @default(uuid())
   name        String  @unique
@@ -133,6 +139,7 @@ model User {
   adjudications          Adjudication[]   @relation("AdjusterAdjudications")
   notifications          Notification[]
   auditLogs              AuditLog[]
+  policies               Policy[]
 }
 
 model Claim {
@@ -337,4 +344,42 @@ model AuditLog {
   @@index([claimId])
   @@index([actorUserId])
   @@index([createdAt])
+}
+
+model Policy {
+  id           String       @id @default(cuid())
+  policyNumber String       @unique
+  customerId   String
+  customer     User         @relation(fields: [customerId], references: [id])
+  status       PolicyStatus @default(ACTIVE)
+  startDate    DateTime
+  endDate      DateTime
+  insurerName  String
+  vehicleMake  String?
+  vehicleModel String?
+  vehicleYear  Int?
+  coverages    Coverage[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@index([endDate])
+}
+
+model Coverage {
+  id                    String   @id @default(cuid())
+  policyId              String
+  policy                Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  coverageType          String
+  coverageLimit         Float?
+  deductible            Float?
+  rentalVehicleEligible Boolean  @default(false)
+  rentalVehicleLimit    Float?
+  description           String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([policyId])
+  @@index([coverageType])
 }

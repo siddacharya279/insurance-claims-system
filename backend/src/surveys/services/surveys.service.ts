@@ -116,6 +116,13 @@ export class SurveysService {
       ClaimStatus.SURVEY_COMPLETED,
     );
 
+    await this.auditService.recordClaimStatusChange(
+      claim.id,
+      user.id,
+      ClaimStatus.SURVEY_PENDING,
+      ClaimStatus.SURVEY_COMPLETED,
+    );
+
     await this.auditService.record({
       claimId: claim.id,
       actorUserId: user.id,

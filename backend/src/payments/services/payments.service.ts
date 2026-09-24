@@ -175,6 +175,13 @@ export class PaymentsService {
       },
     );
 
+    await this.auditService.recordClaimStatusChange(
+      payment.claimId,
+      user.id,
+      ClaimStatus.PAYMENT_PENDING,
+      ClaimStatus.CLOSED,
+    );
+
     await this.auditService.record({
       claimId: payment.claimId,
       actorUserId: user.id,

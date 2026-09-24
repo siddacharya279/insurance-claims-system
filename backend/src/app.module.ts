@@ -17,6 +17,7 @@ import { AuditModule } from './audit/audit.module';
 import { ReportingModule } from './reporting/reporting.module';
 import { HealthModule } from './health/health.module';
 import { ConfigModule } from '@nestjs/config';
+import { PoliciesModule } from './policies/policies.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { ConfigModule } from '@nestjs/config';
     AuditModule,
     ReportingModule,
     HealthModule,
+    PoliciesModule,
   ],
   controllers: [],
   providers: [],

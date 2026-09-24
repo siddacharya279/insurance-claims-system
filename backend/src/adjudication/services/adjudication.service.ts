@@ -40,6 +40,13 @@ export class AdjudicationService {
         ClaimStatus.ADJUDICATION_PENDING,
       );
 
+      await this.auditService.recordClaimStatusChange(
+        claimId,
+        actor.id,
+        ClaimStatus.SURVEY_COMPLETED,
+        ClaimStatus.ADJUDICATION_PENDING,
+      );
+
       claim.status = ClaimStatus.ADJUDICATION_PENDING;
     }
 
@@ -115,6 +122,13 @@ export class AdjudicationService {
     });
 
     await this.claimsRepository.updateClaimStatus(claimId, dto.decision);
+
+    await this.auditService.recordClaimStatusChange(
+      claimId,
+      actor.id,
+      ClaimStatus.ADJUDICATION_PENDING,
+      dto.decision,
+    );
 
     await this.auditService.record({
       claimId: claim.id,
