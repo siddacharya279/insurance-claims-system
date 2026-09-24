@@ -14,7 +14,15 @@ export class ClaimsRepository {
     },
   ) {
     return this.prismaService.claim.create({
-      data: { ...createClaimDto },
+      data: {
+        title: createClaimDto.title,
+        description: createClaimDto.description,
+        incidentDate: new Date(createClaimDto.incidentDate),
+        incidentLocation: createClaimDto.incidentLocation,
+        policyId: createClaimDto.policyId,
+        customerId: createClaimDto.customerId,
+        claimNumber: createClaimDto.claimNumber,
+      },
     });
   }
 

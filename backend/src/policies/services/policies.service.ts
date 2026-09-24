@@ -71,12 +71,13 @@ export class PoliciesService {
   }
 
   async findMyPolicies(user: JwtUser) {
-    if (user.role !== 'CUSTOMER') {
-      throw new BadRequestException(
-        'Only customer users can access their policies',
-      );
-    }
+    // if (user.role !== 'CUSTOMER') {
+    //   throw new BadRequestException(
+    //     'Only customer users can access their policies',
+    //   );
+    // }
 
+    console.log('POLICY USER:', user);
     return this.policiesRepository.findByCustomerId(user.id);
   }
 

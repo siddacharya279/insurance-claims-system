@@ -62,18 +62,17 @@ export class ReportingRepository {
 
   async getAdjudicationSummary() {
     const [approved, rejected] = await Promise.all([
-      this.prismaService.claim.count({
+      this.prismaService.adjudication.count({
         where: {
-          status: 'APPROVED',
+          decision: 'APPROVED',
         },
       }),
-      this.prismaService.claim.count({
+      this.prismaService.adjudication.count({
         where: {
-          status: 'REJECTED',
+          decision: 'REJECTED',
         },
       }),
     ]);
-
     return {
       approved,
       rejected,

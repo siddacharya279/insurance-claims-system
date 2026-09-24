@@ -8,9 +8,9 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ClaimsService } from '../services/claims.service';
 import { CreateClaimDto } from '../dto/create-claim.dto';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { JwtUser } from 'src/common/interfaces/jwt-user.interface';
 import { UpdateClaimStatusDto } from '../dto/update-claim-status.dto';
@@ -22,55 +22,44 @@ import { AssignWorkshopDto } from '../dto/assign-workshop.dto';
 @Controller('claims')
 export class ClaimsController {
   constructor(private readonly claimsService: ClaimsService) {}
-
   @Post()
   @ApiOperation({ summary: 'Create a new claim' })
-  async create(@Body() createClaimDto: CreateClaimDto, @Request() req: any) {
-    const customerId = req.user.id;
-    return this.claimsService.create(createClaimDto, customerId);
+  create(
+    @Body() createClaimDto: CreateClaimDto,
+    @Request() req: { user: JwtUser },
+  ) {
+    return this.claimsService.create(createClaimDto, req.user.id);
   }
-
   @Get()
   @ApiOperation({ summary: 'Get all claims for the authenticated user' })
-  async findAll(@Request() req: { user: JwtUser }) {
-    const user = req.user;
-    return this.claimsService.findAll(user);
+  findAll(@Request() req: { user: JwtUser }) {
+    return this.claimsService.findAll(req.user);
   }
-
   @Get(':id')
   @ApiOperation({ summary: 'Get a claim by ID' })
-  async findById(
-    @Request() req: { user: JwtUser },
-    @Param('id') claimId: string,
-  ) {
-    const user = req.user;
-    return this.claimsService.findById(claimId, user);
+  findById(@Request() req: { user: JwtUser }, @Param('id') claimId: string) {
+    return this.claimsService.findById(claimId, req.user);
   }
-
   @Patch(':id/status')
   @ApiOperation({ summary: 'Update the status of a claim' })
-  async updateClaimStatus(
+  updateClaimStatus(
     @Request() req: { user: JwtUser },
     @Param('id') claimId: string,
     @Body() dto: UpdateClaimStatusDto,
   ) {
-    const user = req.user;
-    return this.claimsService.updateClaimStatus(claimId, dto, user);
+    return this.claimsService.updateClaimStatus(claimId, dto, req.user);
   }
-
   @Patch(':id/assign-workshop')
   @ApiOperation({ summary: 'Assign a workshop to a claim' })
-  @UseGuards(JwtAuthGuard)
-  async assignWorkshop(
+  assignWorkshop(
     @Request() req: { user: JwtUser },
     @Param('id') claimId: string,
     @Body() assignWorkshopDto: AssignWorkshopDto,
   ) {
-    const user = req.user;
     return this.claimsService.assignWorkshop(
       claimId,
       assignWorkshopDto.workshopId,
-      user,
+      req.user,
     );
   }
 }
