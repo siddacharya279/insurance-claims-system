@@ -1,5 +1,3 @@
-You're right. For GitHub, keep it concise.
-
 ````markdown
 # Insurance Claims System
 
