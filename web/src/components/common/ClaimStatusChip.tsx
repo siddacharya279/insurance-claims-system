@@ -20,11 +20,23 @@ const statusConfig: Record<
 > = {
   SUBMITTED: {
     label: "Submitted",
+    color: "info",
+  },
+  CASE_ASSIGNED: {
+    label: "Case Assigned",
+    color: "primary",
+  },
+  SURVEY_PENDING: {
+    label: "Survey Pending",
     color: "warning",
   },
-  UNDER_REVIEW: {
-    label: "Under Review",
+  SURVEY_COMPLETED: {
+    label: "Survey Completed",
     color: "info",
+  },
+  ADJUDICATION_PENDING: {
+    label: "Adjudication Pending",
+    color: "warning",
   },
   APPROVED: {
     label: "Approved",
@@ -34,9 +46,21 @@ const statusConfig: Record<
     label: "Rejected",
     color: "error",
   },
-  COMPLETED: {
-    label: "Completed",
+  REPAIR_IN_PROGRESS: {
+    label: "Repair In Progress",
     color: "primary",
+  },
+  REPAIR_COMPLETED: {
+    label: "Repair Completed",
+    color: "info",
+  },
+  PAYMENT_PENDING: {
+    label: "Payment Pending",
+    color: "warning",
+  },
+  CLOSED: {
+    label: "Closed",
+    color: "success",
   },
 };
 

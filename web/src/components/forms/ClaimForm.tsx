@@ -1,149 +1,176 @@
 import {
   Alert,
-  Box,
   Button,
-  Snackbar,
+  CircularProgress,
+  MenuItem,
+  Stack,
   TextField,
-  Typography,
 } from "@mui/material";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Controller, useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
+import { useRef } from "react";
+import policiesService from "../../services/policies.service";
+import claimsService from "../../services/claims.service";
 import {
   createClaimSchema,
   type CreateClaimFormData,
 } from "../../validations/claim.schema";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import claimsService from "../../services/claims.service";
-import { useNavigate } from "react-router-dom";
-import { useState } from "react";
 
 export default function ClaimForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-
+  const submittingRef = useRef(false);
   const {
-    register,
+    control,
     handleSubmit,
-    reset,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<CreateClaimFormData>({
     resolver: zodResolver(createClaimSchema),
-  });
-
-  const onSubmit = (data: any) => {
-    createClaimMutation.mutate({
-      ...data,
-      incidentDate: new Date(data.incidentDate).toISOString(),
-    });
-  };
-
-  const createClaimMutation = useMutation({
-    mutationFn: claimsService.createClaim,
-
-    onSuccess: () => {
-      reset();
-
-      queryClient.invalidateQueries({
-        queryKey: ["claims"],
-      });
-
-      setSnackbarOpen(true);
-
-      setTimeout(() => {
-        navigate("/claims");
-      }, 1500);
+    defaultValues: {
+      policyId: "",
+      title: "",
+      description: "",
+      incidentDate: "",
+      incidentLocation: "",
     },
   });
-
+  const {
+    data: policies,
+    isLoading: policiesLoading,
+    isError: policiesError,
+  } = useQuery({
+    queryKey: ["policies"],
+    queryFn: policiesService.getMyPolicies,
+  });
+  const activePolicies =
+    policies?.filter((policy) => policy.status === "ACTIVE") ?? [];
+  const onSubmit = async (data: CreateClaimFormData) => {
+    if (submittingRef.current) {
+      return;
+    }
+    submittingRef.current = true;
+    try {
+      const claim = await claimsService.createClaim({
+        ...data,
+        incidentDate: new Date(data.incidentDate).toISOString(),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["claims"],
+      });
+      navigate(`/claims/${claim.id}`, { replace: true });
+    } catch (error) {
+      submittingRef.current = false;
+      throw error;
+    }
+  };
+  if (policiesLoading) {
+    return <CircularProgress />;
+  }
+  if (policiesError) {
+    return <Alert severity="error">Unable to load your policies.</Alert>;
+  }
+  if (!activePolicies.length) {
+    return (
+      <Alert severity="warning">
+        You do not have an active insurance policy available for claim
+        submission.
+      </Alert>
+    );
+  }
   return (
-    <Box
-      component="form"
-      onSubmit={handleSubmit(onSubmit)}
-      sx={{
-        maxWidth: 700,
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-      }}
-    >
-      <Typography variant="h5">New Insurance Claim</Typography>
-
-      {createClaimMutation.isError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          Failed to create claim. Please try again.
-        </Alert>
-      )}
-
-      <TextField
-        label="Title"
-        {...register("title")}
-        fullWidth
-        error={!!errors.title}
-        helperText={errors.title?.message}
-      />
-
-      <TextField
-        label="Incident Location"
-        {...register("incidentLocation")}
-        fullWidth
-        error={!!errors.incidentLocation}
-        helperText={errors.incidentLocation?.message}
-      />
-
-      <TextField
-        label="Incident Date"
-        type="date"
-        {...register("incidentDate")}
-        slotProps={{
-          inputLabel: {
-            shrink: true,
-          },
-        }}
-        fullWidth
-        error={!!errors.incidentDate}
-        helperText={errors.incidentDate?.message}
-      />
-
-      <TextField
-        label="Description"
-        {...register("description")}
-        error={!!errors.description}
-        helperText={errors.description?.message}
-        multiline
-        rows={4}
-        fullWidth
-      />
-
-      <Button variant="outlined" onClick={() => navigate("/claims")}>
-        Cancel
-      </Button>
-
-      <Button
-        type="submit"
-        variant="contained"
-        disabled={createClaimMutation.isPending}
-      >
-        {createClaimMutation.isPending ? "Submitting..." : "Submit Claim"}
-      </Button>
-
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={1500}
-        onClose={() => setSnackbarOpen(false)}
-        anchorOrigin={{
-          vertical: "top",
-          horizontal: "right",
-        }}
-      >
-        <Alert
-          severity="success"
-          variant="filled"
-          onClose={() => setSnackbarOpen(false)}
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Stack spacing={2}>
+        <Controller
+          name="policyId"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              select
+              fullWidth
+              label="Insurance Policy"
+              error={!!errors.policyId}
+              helperText={errors.policyId?.message}
+            >
+              {activePolicies.map((policy) => (
+                <MenuItem key={policy.id} value={policy.id}>
+                  {policy.policyNumber} — {policy.vehicleMake}{" "}
+                  {policy.vehicleModel} {policy.vehicleYear ?? ""}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
+        />
+        <Controller
+          name="title"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              fullWidth
+              label="Claim Title"
+              error={!!errors.title}
+              helperText={errors.title?.message}
+            />
+          )}
+        />
+        <Controller
+          name="incidentDate"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              fullWidth
+              type="datetime-local"
+              label="Incident Date"
+              slotProps={{
+                inputLabel: {
+                  shrink: true,
+                },
+              }}
+              error={!!errors.incidentDate}
+              helperText={errors.incidentDate?.message}
+            />
+          )}
+        />
+        <Controller
+          name="incidentLocation"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              fullWidth
+              label="Incident Location"
+              error={!!errors.incidentLocation}
+              helperText={errors.incidentLocation?.message}
+            />
+          )}
+        />
+        <Controller
+          name="description"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              fullWidth
+              multiline
+              minRows={4}
+              label="Description"
+              error={!!errors.description}
+              helperText={errors.description?.message}
+            />
+          )}
+        />
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={isSubmitting || submittingRef.current}
         >
-          Claim created successfully.
-        </Alert>
-      </Snackbar>
-    </Box>
+          {isSubmitting ? "Submitting..." : "Submit Claim"}
+        </Button>
+      </Stack>
+    </form>
   );
 }

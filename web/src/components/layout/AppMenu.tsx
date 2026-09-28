@@ -8,6 +8,10 @@ const menu = [
     path: "/dashboard",
   },
   {
+    label: "Policies",
+    path: "/policies",
+  },
+  {
     label: "Claims",
     path: "/claims",
   },

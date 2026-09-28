@@ -9,6 +9,7 @@ import CreateClaimPage from "../pages/claims/CreateClaimPage";
 import ClaimDetailsPage from "../pages/claims/ClaimDetailsPage";
 import WorkshopsPage from "../pages/workshops/WorkshopsPage";
 import WorkshopDetailsPage from "../pages/workshops/WorkshopDetailsPage";
+import PoliciesPage from "../pages/policies/PoliciesPage";
 
 export default function AppRoutes() {
   return (
@@ -26,6 +27,7 @@ export default function AppRoutes() {
           }
         >
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/policies" element={<PoliciesPage />} />
 
           <Route path="/claims" element={<ClaimsPage />} />
           <Route path="/claims/new" element={<CreateClaimPage />} />
