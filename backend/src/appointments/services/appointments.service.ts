@@ -109,7 +109,7 @@ export class AppointmentsService {
     const appointment = await this.appointmentsRepository.findById(id);
 
     if (!appointment) {
-      throw new NotFoundException('Appointment not found');
+      return null;
     }
 
     const claim = await this.claimsRepository.findById(appointment.claimId);
