@@ -75,6 +75,8 @@ export class ClaimsService {
         return this.claimsRepository.findAll();
       case RoleName.CUSTOMER:
         return this.claimsRepository.findByCustomer(user.id);
+      case RoleName.SURVEYOR:
+        return this.claimsRepository.findBySurveyor(user.id);
       default:
         throw new UnauthorizedException('Unauthorized Access');
     }
@@ -88,7 +90,9 @@ export class ClaimsService {
     if (
       user.role === RoleName.ADMIN ||
       user.role === RoleName.CASE_MANAGER ||
-      claim.customerId === user.id
+      (user.role === RoleName.CUSTOMER && claim.customerId === user.id) ||
+      (user.role === RoleName.SURVEYOR &&
+        claim.caseAssignment?.surveyorId === user.id)
     ) {
       return claim;
     }

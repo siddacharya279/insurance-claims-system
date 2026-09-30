@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { RoleName } from 'src/common/enums/roles.enum';
 
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -84,6 +85,35 @@ export class CaseManagementRepository {
           },
         },
       },
+    });
+  }
+
+  async findAssignableUsers() {
+    return this.prisma.user.findMany({
+      where: {
+        status: 'ACTIVE',
+        role: {
+          name: {
+            in: [RoleName.CASE_MANAGER, RoleName.SURVEYOR],
+          },
+        },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: [
+        { role: { name: 'asc' } },
+        { firstName: 'asc' },
+        { lastName: 'asc' },
+      ],
     });
   }
 }

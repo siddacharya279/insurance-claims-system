@@ -39,7 +39,21 @@ export class CaseManagementService {
       throw new NotFoundException('Claim not found');
     }
 
-    const caseManager = await this.usersService.findById(dto.caseManagerId);
+    let caseManagerId: string;
+
+    if (actor.role === RoleName.CASE_MANAGER) {
+      caseManagerId = actor.id;
+    } else {
+      if (!dto.caseManagerId) {
+        throw new BadRequestException(
+          'Case manager is required when an administrator assigns a case',
+        );
+      }
+
+      caseManagerId = dto.caseManagerId;
+    }
+
+    const caseManager = await this.usersService.findById(caseManagerId);
 
     if (
       !caseManager ||
@@ -67,7 +81,7 @@ export class CaseManagementService {
 
     const assignment = await this.repository.assign(
       claimId,
-      dto.caseManagerId,
+      caseManagerId,
       dto.surveyorId,
     );
 
@@ -76,7 +90,7 @@ export class CaseManagementService {
       actorUserId: actor.id,
       action: 'CASE_ASSIGNED',
       newValue: JSON.stringify({
-        caseManagerId: dto.caseManagerId,
+        caseManagerId,
         surveyorId: dto.surveyorId ?? null,
       }),
       description: `Claim ${claim.claimNumber} assigned to case manager`,
@@ -124,5 +138,17 @@ export class CaseManagementService {
     }
 
     return assignment;
+  }
+
+  async getAssignableUsers(actor: JwtUser) {
+    if (
+      ![RoleName.ADMIN, RoleName.CASE_MANAGER].includes(actor.role as RoleName)
+    ) {
+      throw new UnauthorizedException(
+        'Only administrators or case managers can view assignable users',
+      );
+    }
+
+    return this.repository.findAssignableUsers();
   }
 }

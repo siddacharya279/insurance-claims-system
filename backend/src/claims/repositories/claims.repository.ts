@@ -92,6 +92,26 @@ export class ClaimsRepository {
           },
         },
         repair: true,
+        caseAssignment: {
+          include: {
+            caseManager: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+            surveyor: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
       },
     });
   }
@@ -108,6 +128,30 @@ export class ClaimsRepository {
       where: { id: claimId },
       data: { workshopId },
       include: { workshop: true },
+    });
+  }
+
+  async findBySurveyor(surveyorId: string) {
+    return this.prismaService.claim.findMany({
+      where: {
+        caseAssignment: {
+          surveyorId,
+        },
+      },
+      include: {
+        customer: true,
+        policy: true,
+        workshop: true,
+        caseAssignment: {
+          include: {
+            surveyor: true,
+            caseManager: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
   }
 }

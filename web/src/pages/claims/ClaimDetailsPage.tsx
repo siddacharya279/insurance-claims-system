@@ -7,8 +7,12 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
   Grid,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Step,
   StepLabel,
@@ -37,6 +41,7 @@ import type {
   RentalVehicle,
 } from "../../services/rental-vehicles.service";
 import auditService from "../../services/audit.service";
+import caseManagementService from "../../services/case-management.service";
 
 const claimSteps = [
   "SUBMITTED",
@@ -100,6 +105,9 @@ export default function ClaimDetailsPage() {
   const [transactionReference, setTransactionReference] = useState("");
   const [paymentError, setPaymentError] = useState("");
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [selectedSurveyorId, setSelectedSurveyorId] = useState("");
+  const [assignmentError, setAssignmentError] = useState("");
+
   const {
     data: claim,
     isLoading,
@@ -169,6 +177,18 @@ export default function ClaimDetailsPage() {
       ),
     retry: false,
   });
+  const { data: caseAssignment, isLoading: isAssignmentLoading } = useQuery({
+    queryKey: ["case-assignment", claim?.id],
+    queryFn: () => caseManagementService.getAssignment(claim?.id!),
+    enabled: !!claim?.id,
+  });
+
+  const { data: assignableUsers = [] } = useQuery({
+    queryKey: ["assignable-users"],
+    queryFn: caseManagementService.getAssignableUsers,
+    enabled: authService.getRole() === "CASE_MANAGER",
+  });
+
   const startRepairMutation = useMutation({
     mutationFn: () =>
       workshopRepairService.startRepair(claim!.id, {
@@ -309,6 +329,27 @@ export default function ClaimDetailsPage() {
     },
     onSettled: () => {
       setPaymentSubmitting(false);
+    },
+  });
+  const assignCaseMutation = useMutation({
+    mutationFn: () =>
+      caseManagementService.assignCase(claim?.id!, selectedSurveyorId),
+    onSuccess: () => {
+      setAssignmentError("");
+      queryClient.invalidateQueries({
+        queryKey: ["case-assignment", claim?.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["claim", claim?.id],
+      });
+      setSelectedSurveyorId("");
+    },
+    onError: (error: any) => {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Unable to assign surveyor.";
+      setAssignmentError(Array.isArray(message) ? message.join(", ") : message);
     },
   });
   if (isLoading) {
@@ -723,6 +764,77 @@ export default function ClaimDetailsPage() {
           )}
         </Paper>
       )}
+      <Paper sx={{ p: 3, mt: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Case Assignment
+        </Typography>
+
+        {isAssignmentLoading ? (
+          <Typography color="text.secondary">Loading assignment...</Typography>
+        ) : caseAssignment ? (
+          <Box>
+            <Typography>
+              <strong>Case Manager:</strong>{" "}
+              {caseAssignment.caseManager.firstName}{" "}
+              {caseAssignment.caseManager.lastName}
+            </Typography>
+
+            <Typography sx={{ mt: 1 }}>
+              <strong>Surveyor:</strong> {caseAssignment.surveyor.firstName}{" "}
+              {caseAssignment.surveyor.lastName}
+            </Typography>
+
+            <Typography sx={{ mt: 1 }}>
+              <strong>Assigned:</strong>{" "}
+              {new Date(caseAssignment.assignedAt).toLocaleString()}
+            </Typography>
+          </Box>
+        ) : (
+          <Typography color="text.secondary">
+            No surveyor has been assigned yet.
+          </Typography>
+        )}
+
+        {authService.getRole() === "CASE_MANAGER" && !caseAssignment && (
+          <Box sx={{ mt: 3 }}>
+            <FormControl fullWidth>
+              <InputLabel id="surveyor-select-label">Surveyor</InputLabel>
+
+              <Select
+                labelId="surveyor-select-label"
+                value={selectedSurveyorId}
+                label="Surveyor"
+                onChange={(event) => setSelectedSurveyorId(event.target.value)}
+              >
+                {assignableUsers
+                  .filter((user) => user.role.name === "SURVEYOR")
+                  .map((user) => (
+                    <MenuItem key={user.id} value={user.id}>
+                      {user.firstName} {user.lastName} — {user.email}
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
+
+            {assignmentError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {assignmentError}
+              </Alert>
+            )}
+
+            <Button
+              variant="contained"
+              sx={{ mt: 2 }}
+              disabled={!selectedSurveyorId || assignCaseMutation.isPending}
+              onClick={() => assignCaseMutation.mutate()}
+            >
+              {assignCaseMutation.isPending
+                ? "Assigning..."
+                : "Assign Surveyor"}
+            </Button>
+          </Box>
+        )}
+      </Paper>
       <Paper sx={{ p: 3, mt: 3 }}>
         <Typography variant="h6" gutterBottom>
           Survey

@@ -35,6 +35,8 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role: user.role.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
     };
 
     //generate token

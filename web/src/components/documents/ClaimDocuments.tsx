@@ -47,6 +47,15 @@ export default function ClaimDocuments({ claimId }: ClaimDocumentsProps) {
     },
   });
 
+  const uploadErrorMessage = (() => {
+    const error = uploadMutation.error as any;
+    const message =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Unable to upload document.";
+    return Array.isArray(message) ? message.join(", ") : message;
+  })();
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => documentsService.deleteDocument(id),
     onSuccess: () => {
@@ -56,11 +65,14 @@ export default function ClaimDocuments({ claimId }: ClaimDocumentsProps) {
     },
   });
 
+  const handleUpload = (file: File) => {
+    uploadMutation.reset();
+    uploadMutation.mutate(file);
+  };
+
   const handlePreview = async (document: any) => {
     const blob = await documentsService.getDocumentBlob(document.id);
-
     const url = URL.createObjectURL(blob);
-
     setPreviewUrl(url);
     setPreviewDocument(document);
   };
@@ -68,24 +80,17 @@ export default function ClaimDocuments({ claimId }: ClaimDocumentsProps) {
   const handleDelete = (document: any) => {
     setDeleteDocument(document);
   };
-  
+
   const handleDownload = async (doc: any) => {
     try {
       const blob = await documentsService.getDocumentBlob(doc.id);
-
       const url = URL.createObjectURL(blob);
-
       const link = window.document.createElement("a");
-
       link.href = url;
       link.download = doc.originalName;
-
       window.document.body.appendChild(link);
-
       link.click();
-
       window.document.body.removeChild(link);
-
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Download failed", error);
@@ -119,7 +124,6 @@ export default function ClaimDocuments({ claimId }: ClaimDocumentsProps) {
           }}
         >
           <Typography variant="h6">Documents</Typography>
-
           <Button
             component="label"
             variant="contained"
@@ -133,12 +137,19 @@ export default function ClaimDocuments({ claimId }: ClaimDocumentsProps) {
               id="document-upload"
               onChange={(e) => {
                 if (e.target.files?.length) {
-                  uploadMutation.mutate(e.target.files[0]);
+                  handleUpload(e.target.files[0]);
+                  e.target.value = "";
                 }
               }}
             />
           </Button>
         </Box>
+
+        {uploadMutation.isError && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {uploadErrorMessage}
+          </Alert>
+        )}
 
         <Typography color="text.secondary" sx={{ mt: 2 }}>
           No documents uploaded yet.
@@ -160,7 +171,6 @@ export default function ClaimDocuments({ claimId }: ClaimDocumentsProps) {
       valueFormatter: (value: number) => {
         if (value < 1024) return `${value} B`;
         if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-
         return `${(value / (1024 * 1024)).toFixed(2)} MB`;
       },
     },
@@ -231,12 +241,20 @@ export default function ClaimDocuments({ claimId }: ClaimDocumentsProps) {
               id="document-upload"
               onChange={(e) => {
                 if (e.target.files?.length) {
-                  uploadMutation.mutate(e.target.files[0]);
+                  handleUpload(e.target.files[0]);
+                  e.target.value = "";
                 }
               }}
             />
           </Button>
         </Box>
+
+        {uploadMutation.isError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {uploadErrorMessage}
+          </Alert>
+        )}
+
         <Box sx={{ height: 300 }}>
           <DataGrid
             rows={documents ?? []}
@@ -247,6 +265,7 @@ export default function ClaimDocuments({ claimId }: ClaimDocumentsProps) {
           />
         </Box>
       </Paper>
+
       <Dialog
         open={!!previewDocument}
         maxWidth="lg"
@@ -254,7 +273,6 @@ export default function ClaimDocuments({ claimId }: ClaimDocumentsProps) {
         onClose={() => setPreviewDocument(null)}
       >
         <DialogTitle>{previewDocument?.originalName}</DialogTitle>
-
         <DialogContent>
           {previewDocument && (
             <img
@@ -268,15 +286,14 @@ export default function ClaimDocuments({ claimId }: ClaimDocumentsProps) {
           )}
         </DialogContent>
       </Dialog>
+
       <Dialog open={!!deleteDocument} onClose={() => setDeleteDocument(null)}>
         <DialogTitle>Delete Document</DialogTitle>
-
         <DialogContent>
           <Typography>
             Are you sure you want to delete
             <strong> {deleteDocument?.originalName}</strong>?
           </Typography>
-
           <Box
             sx={{
               mt: 3,
@@ -286,7 +303,6 @@ export default function ClaimDocuments({ claimId }: ClaimDocumentsProps) {
             }}
           >
             <Button onClick={() => setDeleteDocument(null)}>Cancel</Button>
-
             <Button
               color="error"
               variant="contained"
@@ -297,6 +313,7 @@ export default function ClaimDocuments({ claimId }: ClaimDocumentsProps) {
           </Box>
         </DialogContent>
       </Dialog>
+
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={2000}

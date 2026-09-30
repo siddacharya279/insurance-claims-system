@@ -33,9 +33,13 @@ export class SurveysService {
       throw new NotFoundException('Claim not found');
     }
 
-    if (user.role !== RoleName.ADMIN && user.role !== RoleName.CASE_MANAGER) {
+    const isAdmin = user.role === RoleName.ADMIN;
+    const isCaseManager = user.role === RoleName.CASE_MANAGER;
+    const isSurveyor = user.role === RoleName.SURVEYOR;
+
+    if (!isAdmin && !isCaseManager && !isSurveyor) {
       throw new UnauthorizedException(
-        'Only administrators or case managers can create surveys',
+        'Only administrators, case managers, or the assigned surveyor can create surveys',
       );
     }
 
@@ -46,20 +50,36 @@ export class SurveysService {
       throw new BadRequestException('Claim is not ready for survey');
     }
 
-    const surveyor = await this.usersService.findById(
-      createSurveyDto.surveyorId,
-    );
+    let surveyorId: string;
 
-    if (!surveyor) {
-      throw new NotFoundException('Surveyor not found');
-    }
+    if (isSurveyor) {
+      if (claim.caseAssignment?.surveyorId !== user.id) {
+        throw new UnauthorizedException(
+          'Only the surveyor assigned to this claim can create the survey',
+        );
+      }
 
-    if (surveyor.role.name !== RoleName.SURVEYOR) {
-      throw new BadRequestException('Selected user is not a surveyor');
-    }
+      surveyorId = user.id;
+    } else {
+      if (!createSurveyDto.surveyorId) {
+        throw new BadRequestException('Surveyor is required');
+      }
 
-    if (surveyor.status !== 'ACTIVE') {
-      throw new BadRequestException('Selected surveyor is not active');
+      surveyorId = createSurveyDto.surveyorId;
+
+      const surveyor = await this.usersService.findById(surveyorId);
+
+      if (!surveyor) {
+        throw new NotFoundException('Surveyor not found');
+      }
+
+      if (surveyor.role.name !== RoleName.SURVEYOR) {
+        throw new BadRequestException('Selected user is not a surveyor');
+      }
+
+      if (surveyor.status !== 'ACTIVE') {
+        throw new BadRequestException('Selected surveyor is not active');
+      }
     }
 
     const existing = await this.surveysRepository.findByClaimId(claim.id);
@@ -70,15 +90,24 @@ export class SurveysService {
 
     const survey = await this.surveysRepository.create({
       claimId: claim.id,
-      surveyorId: surveyor.id,
+      surveyorId,
       damageDescription: createSurveyDto.damageDescription,
       estimatedCost: createSurveyDto.estimatedCost,
     });
 
-    await this.claimsRepository.updateClaimStatus(
-      claim.id,
-      ClaimStatus.SURVEY_PENDING,
-    );
+    if (claim.status === ClaimStatus.CASE_ASSIGNED) {
+      await this.claimsRepository.updateClaimStatus(
+        claim.id,
+        ClaimStatus.SURVEY_PENDING,
+      );
+
+      await this.auditService.recordClaimStatusChange(
+        claim.id,
+        user.id,
+        ClaimStatus.CASE_ASSIGNED,
+        ClaimStatus.SURVEY_PENDING,
+      );
+    }
 
     return survey;
   }

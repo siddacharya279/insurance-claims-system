@@ -47,6 +47,7 @@ export default function DocumentsPage() {
     null,
   );
   const [successMessage, setSuccessMessage] = useState("");
+  const [uploadError, setUploadError] = useState("");
 
   const {
     data: claims,
@@ -94,7 +95,16 @@ export default function DocumentsPage() {
       setUploadOpen(false);
       setSelectedClaimId("");
       setSelectedFile(null);
+      setUploadError("");
       setSuccessMessage("Document uploaded successfully.");
+    },
+    onError: (error: any) => {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Unable to upload document.";
+
+      setUploadError(Array.isArray(message) ? message.join(", ") : message);
     },
   });
 
@@ -317,11 +327,7 @@ export default function DocumentsPage() {
               />
             </Button>
 
-            {uploadMutation.isError && (
-              <Alert severity="error">
-                Unable to upload document. Please check the file type and size.
-              </Alert>
-            )}
+            {uploadError && <Alert severity="error">{uploadError}</Alert>}
           </Stack>
         </DialogContent>
         <DialogActions>
