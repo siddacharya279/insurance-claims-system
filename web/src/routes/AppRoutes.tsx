@@ -10,6 +10,11 @@ import ClaimDetailsPage from "../pages/claims/ClaimDetailsPage";
 import WorkshopsPage from "../pages/workshops/WorkshopsPage";
 import WorkshopDetailsPage from "../pages/workshops/WorkshopDetailsPage";
 import PoliciesPage from "../pages/policies/PoliciesPage";
+import NotificationsPage from "../pages/notifications/NotificationsPage";
+import ReportingPage from "../pages/reporting/ReportingPage";
+import DocumentsPage from "../pages/documents/DocumentsPage";
+import AppointmentsPage from "../pages/appointments/AppointmentsPage";
+import SurveysPage from "../pages/surveys/SurveysPage";
 
 export default function AppRoutes() {
   return (
@@ -35,6 +40,11 @@ export default function AppRoutes() {
 
           <Route path="/workshops" element={<WorkshopsPage />} />
           <Route path="/workshops/:id" element={<WorkshopDetailsPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/reporting" element={<ReportingPage />} />
+          <Route path="/documents" element={<DocumentsPage />} />
+          <Route path="/appointments" element={<AppointmentsPage />} />
+          <Route path="/surveys" element={<SurveysPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

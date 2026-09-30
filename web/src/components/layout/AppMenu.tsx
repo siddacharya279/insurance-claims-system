@@ -1,6 +1,6 @@
 import { List, ListItemButton, ListItemText } from "@mui/material";
-
 import { NavLink } from "react-router-dom";
+import authService from "../../services/auth.service";
 
 const menu = [
   {
@@ -31,12 +31,25 @@ const menu = [
     label: "Surveys",
     path: "/surveys",
   },
+  {
+    label: "Notifications",
+    path: "/notifications",
+  },
+  {
+    label: "Reporting",
+    path: "/reporting",
+    allowedRoles: ["ADMIN", "CASE_MANAGER", "AUDITOR"],
+  },
 ];
 
 export default function AppMenu() {
+  const role = authService.getRole();
+  const visibleMenu = menu.filter(
+    (item) => !item.allowedRoles || item.allowedRoles.includes(role ?? ""),
+  );
   return (
     <List>
-      {menu.map((item) => (
+      {visibleMenu.map((item) => (
         <ListItemButton
           key={item.path}
           component={NavLink}

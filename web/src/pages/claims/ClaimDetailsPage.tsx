@@ -36,6 +36,7 @@ import type {
   RentalEligibility,
   RentalVehicle,
 } from "../../services/rental-vehicles.service";
+import auditService from "../../services/audit.service";
 
 const claimSteps = [
   "SUBMITTED",
@@ -156,6 +157,16 @@ export default function ClaimDetailsPage() {
     queryKey: ["payment", claim?.id],
     queryFn: () => paymentsService.getPaymentByClaimId(claim!.id),
     enabled: !!claim?.id,
+    retry: false,
+  });
+  const { data: auditLogs, isLoading: auditLoading } = useQuery({
+    queryKey: ["audit", claim?.id],
+    queryFn: () => auditService.getByClaimId(claim!.id),
+    enabled:
+      !!claim?.id &&
+      ["ADMIN", "CASE_MANAGER", "AUDITOR"].includes(
+        authService.getRole() ?? "",
+      ),
     retry: false,
   });
   const startRepairMutation = useMutation({
@@ -1367,6 +1378,64 @@ export default function ClaimDetailsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+      <Paper sx={{ p: 3, mt: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Audit History
+        </Typography>
+        {auditLoading ? (
+          <CircularProgress size={24} />
+        ) : auditLogs && auditLogs.length > 0 ? (
+          <Stack spacing={2}>
+            {auditLogs.map((audit) => (
+              <Paper key={audit.id} variant="outlined" sx={{ p: 2 }}>
+                <Stack spacing={1}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 2,
+                    }}
+                  >
+                    <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+                      {audit.action.replaceAll("_", " ")}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {new Date(audit.createdAt).toLocaleString()}
+                    </Typography>
+                  </Box>
+                  {audit.description && (
+                    <Typography>{audit.description}</Typography>
+                  )}
+                  {audit.actorUserId && (
+                    <Typography variant="body2" color="text.secondary">
+                      Actor: {audit.actorUserId}
+                    </Typography>
+                  )}
+                  {(audit.oldValue || audit.newValue) && (
+                    <Box>
+                      {audit.oldValue && (
+                        <Typography variant="body2">
+                          <strong>Previous:</strong> {audit.oldValue}
+                        </Typography>
+                      )}
+                      {audit.newValue && (
+                        <Typography variant="body2">
+                          <strong>New:</strong> {audit.newValue}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+                </Stack>
+              </Paper>
+            ))}
+          </Stack>
+        ) : (
+          <Typography color="text.secondary">
+            No audit history available for this claim.
+          </Typography>
+        )}
+      </Paper>
     </Box>
   );
 }
