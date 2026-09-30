@@ -5,7 +5,8 @@ export interface Notification {
   recipientUserId: string;
   type: string;
   message: string;
-  isRead: boolean;
+  status: "UNREAD" | "READ";
+  readAt: string | null;
   createdAt: string;
 }
 const getMyNotifications = async (): Promise<Notification[]> => {

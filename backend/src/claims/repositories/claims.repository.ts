@@ -154,4 +154,35 @@ export class ClaimsRepository {
       },
     });
   }
+
+  async findForAdjudication() {
+    return this.prismaService.claim.findMany({
+      where: {
+        status: {
+          in: [
+            ClaimStatus.SURVEY_COMPLETED,
+            ClaimStatus.ADJUDICATION_PENDING,
+            ClaimStatus.APPROVED,
+            ClaimStatus.REJECTED,
+          ],
+        },
+      },
+      include: {
+        customer: true,
+        policy: true,
+        workshop: true,
+        caseAssignment: {
+          include: {
+            caseManager: true,
+            surveyor: true,
+          },
+        },
+        survey: true,
+        adjudication: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
 }

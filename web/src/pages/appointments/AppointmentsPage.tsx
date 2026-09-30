@@ -119,9 +119,12 @@ export default function AppointmentsPage() {
     return (claims ?? []).filter(
       (claim: Claim) =>
         claim.workshopId &&
-        ["CASE_ASSIGNED", "SURVEY_PENDING", "SURVEY_COMPLETED"].includes(
-          claim.status,
-        ),
+        [
+          "CASE_ASSIGNED",
+          "SURVEY_PENDING",
+          "SURVEY_COMPLETED",
+          "APPROVED",
+        ].includes(claim.status),
     );
   }, [claims]);
 

@@ -22,8 +22,9 @@ import {
 } from "@mui/material";
 import { ArrowBack } from "@mui/icons-material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+
 import claimsService from "../../services/claims.service";
 import ClaimStatusChip from "../../components/common/ClaimStatusChip";
 import ClaimDocuments from "../../components/documents/ClaimDocuments";
@@ -36,10 +37,12 @@ import rentalVehiclesService from "../../services/rental-vehicles.service";
 import workshopRepairService from "../../services/workshop-repair.service";
 import paymentsService from "../../services/payments.service";
 import authService from "../../services/auth.service";
+
 import type {
   RentalEligibility,
   RentalVehicle,
 } from "../../services/rental-vehicles.service";
+
 import auditService from "../../services/audit.service";
 import caseManagementService from "../../services/case-management.service";
 
@@ -74,10 +77,13 @@ export default function ClaimDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+
   const [appointmentDate, setAppointmentDate] = useState("");
   const [appointmentError, setAppointmentError] = useState("");
   const [appointmentSubmitting, setAppointmentSubmitting] = useState(false);
+
   const [adjudicationDecision, setAdjudicationDecision] = useState<
     "APPROVED" | "REJECTED"
   >("APPROVED");
@@ -85,12 +91,14 @@ export default function ClaimDetailsPage() {
   const [decisionReason, setDecisionReason] = useState("");
   const [adjudicationError, setAdjudicationError] = useState("");
   const [adjudicationSubmitting, setAdjudicationSubmitting] = useState(false);
+
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [rentalStartDate, setRentalStartDate] = useState("");
   const [rentalEndDate, setRentalEndDate] = useState("");
   const [rentalNotes, setRentalNotes] = useState("");
   const [rentalError, setRentalError] = useState("");
   const [rentalSubmitting, setRentalSubmitting] = useState(false);
+
   const [repairDialogOpen, setRepairDialogOpen] = useState(false);
   const [repairAction, setRepairAction] = useState<
     "start" | "update" | "complete" | null
@@ -100,11 +108,13 @@ export default function ClaimDetailsPage() {
   const [finalBillAmount, setFinalBillAmount] = useState("");
   const [repairError, setRepairError] = useState("");
   const [repairSubmitting, setRepairSubmitting] = useState(false);
+
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("ONLINE");
   const [transactionReference, setTransactionReference] = useState("");
   const [paymentError, setPaymentError] = useState("");
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+
   const [selectedSurveyorId, setSelectedSurveyorId] = useState("");
   const [assignmentError, setAssignmentError] = useState("");
 
@@ -117,29 +127,34 @@ export default function ClaimDetailsPage() {
     queryFn: () => claimsService.getClaim(id!),
     enabled: !!id,
   });
+
   const { data: workshop, isLoading: workshopLoading } = useQuery({
     queryKey: ["workshop", claim?.workshopId],
     queryFn: () => workshopsService.getWorkshop(claim!.workshopId!),
     enabled: !!claim?.workshopId,
   });
+
   const { data: appointment, isLoading: appointmentLoading } = useQuery({
     queryKey: ["appointment", claim?.id],
     queryFn: () => appointmentsService.getAppointment(claim!.id),
     enabled: !!claim?.id,
     retry: false,
   });
+
   const { data: survey, isLoading: surveyLoading } = useQuery({
     queryKey: ["survey", claim?.id],
     queryFn: () => surveysService.getSurvey(claim!.id),
     enabled: !!claim?.id,
     retry: false,
   });
+
   const { data: adjudication, isLoading: adjudicationLoading } = useQuery({
     queryKey: ["adjudication", claim?.id],
     queryFn: () => adjudicationService.getAdjudication(claim!.id),
     enabled: !!claim?.id,
     retry: false,
   });
+
   const { data: rentalEligibility, isLoading: rentalEligibilityLoading } =
     useQuery<RentalEligibility>({
       queryKey: ["rental-eligibility", claim?.id],
@@ -147,6 +162,7 @@ export default function ClaimDetailsPage() {
       enabled: !!claim?.id,
       retry: false,
     });
+
   const { data: rentalSelection, isLoading: rentalSelectionLoading } = useQuery(
     {
       queryKey: ["rental-selection", claim?.id],
@@ -155,18 +171,21 @@ export default function ClaimDetailsPage() {
       retry: false,
     },
   );
+
   const { data: repair, isLoading: repairLoading } = useQuery({
     queryKey: ["repair", claim?.id],
     queryFn: () => workshopRepairService.getRepairByClaimId(claim!.id),
     enabled: !!claim?.id,
     retry: false,
   });
+
   const { data: payment, isLoading: paymentLoading } = useQuery({
     queryKey: ["payment", claim?.id],
     queryFn: () => paymentsService.getPaymentByClaimId(claim!.id),
     enabled: !!claim?.id,
     retry: false,
   });
+
   const { data: auditLogs, isLoading: auditLoading } = useQuery({
     queryKey: ["audit", claim?.id],
     queryFn: () => auditService.getByClaimId(claim!.id),
@@ -177,11 +196,40 @@ export default function ClaimDetailsPage() {
       ),
     retry: false,
   });
+
   const { data: caseAssignment, isLoading: isAssignmentLoading } = useQuery({
     queryKey: ["case-assignment", claim?.id],
     queryFn: () => caseManagementService.getAssignment(claim?.id!),
     enabled: !!claim?.id,
   });
+
+  /*
+   * When an Adjuster opens a claim after the survey is completed,
+   * initialize the adjudication review.
+   *
+   * Backend:
+   * SURVEY_COMPLETED -> ADJUDICATION_PENDING
+   */
+  useEffect(() => {
+    if (
+      authService.getRole() !== "ADJUSTER" ||
+      !claim?.id ||
+      claim.status !== "SURVEY_COMPLETED"
+    ) {
+      return;
+    }
+
+    adjudicationService
+      .getForReview(claim.id)
+      .then(async () => {
+        await queryClient.invalidateQueries({
+          queryKey: ["claim", claim.id],
+        });
+      })
+      .catch(() => {
+        // Keep the current claim state if review initialization fails.
+      });
+  }, [claim?.id, claim?.status, queryClient]);
 
   const { data: assignableUsers = [] } = useQuery({
     queryKey: ["assignable-users"],
@@ -200,9 +248,11 @@ export default function ClaimDetailsPage() {
       await queryClient.invalidateQueries({
         queryKey: ["repair", claim!.id],
       });
+
       await queryClient.invalidateQueries({
         queryKey: ["claim", claim!.id],
       });
+
       setRepairDialogOpen(false);
       setRepairAction(null);
       setExpectedDeliveryDate("");
@@ -218,11 +268,13 @@ export default function ClaimDetailsPage() {
       setRepairSubmitting(false);
     },
   });
+
   const updateRepairMutation = useMutation({
     mutationFn: () => {
       if (!repair) {
         throw new Error("Repair details are not available.");
       }
+
       return workshopRepairService.updateRepair(repair.id, {
         expectedDeliveryDate: expectedDeliveryDate
           ? new Date(expectedDeliveryDate).toISOString()
@@ -234,6 +286,7 @@ export default function ClaimDetailsPage() {
       await queryClient.invalidateQueries({
         queryKey: ["repair", claim!.id],
       });
+
       setRepairDialogOpen(false);
       setRepairAction(null);
       setExpectedDeliveryDate("");
@@ -249,11 +302,13 @@ export default function ClaimDetailsPage() {
       setRepairSubmitting(false);
     },
   });
+
   const completeRepairMutation = useMutation({
     mutationFn: () => {
       if (!repair) {
         throw new Error("Repair details are not available.");
       }
+
       return workshopRepairService.completeRepair(repair.id, {
         finalBillAmount: Number(finalBillAmount),
         repairNotes: repairNotes.trim() || undefined,
@@ -263,9 +318,11 @@ export default function ClaimDetailsPage() {
       await queryClient.invalidateQueries({
         queryKey: ["repair", claim!.id],
       });
+
       await queryClient.invalidateQueries({
         queryKey: ["claim", claim!.id],
       });
+
       setRepairDialogOpen(false);
       setRepairAction(null);
       setFinalBillAmount("");
@@ -281,6 +338,7 @@ export default function ClaimDetailsPage() {
       setRepairSubmitting(false);
     },
   });
+
   const createPaymentMutation = useMutation({
     mutationFn: () =>
       paymentsService.createPayment(claim!.id, {
@@ -290,6 +348,7 @@ export default function ClaimDetailsPage() {
       await queryClient.invalidateQueries({
         queryKey: ["payment", claim!.id],
       });
+
       setPaymentError("");
       setTransactionReference("");
     },
@@ -302,11 +361,13 @@ export default function ClaimDetailsPage() {
       setPaymentSubmitting(false);
     },
   });
+
   const completePaymentMutation = useMutation({
     mutationFn: () => {
       if (!payment) {
         throw new Error("Payment details are not available.");
       }
+
       return paymentsService.completePayment(payment.id, {
         transactionReference: transactionReference.trim(),
       });
@@ -315,9 +376,11 @@ export default function ClaimDetailsPage() {
       await queryClient.invalidateQueries({
         queryKey: ["payment", claim!.id],
       });
+
       await queryClient.invalidateQueries({
         queryKey: ["claim", claim!.id],
       });
+
       setPaymentDialogOpen(false);
       setPaymentError("");
       setTransactionReference("");
@@ -331,17 +394,21 @@ export default function ClaimDetailsPage() {
       setPaymentSubmitting(false);
     },
   });
+
   const assignCaseMutation = useMutation({
     mutationFn: () =>
       caseManagementService.assignCase(claim?.id!, selectedSurveyorId),
     onSuccess: () => {
       setAssignmentError("");
+
       queryClient.invalidateQueries({
         queryKey: ["case-assignment", claim?.id],
       });
+
       queryClient.invalidateQueries({
         queryKey: ["claim", claim?.id],
       });
+
       setSelectedSurveyorId("");
     },
     onError: (error: any) => {
@@ -349,72 +416,94 @@ export default function ClaimDetailsPage() {
         error?.response?.data?.message ||
         error?.message ||
         "Unable to assign surveyor.";
+
       setAssignmentError(Array.isArray(message) ? message.join(", ") : message);
     },
   });
+
   if (isLoading) {
     return <CircularProgress />;
   }
+
   if (isError || !claim) {
     return <Alert severity="error">Unable to load claim.</Alert>;
   }
+
   const isRejected = claim.status === "REJECTED";
   const currentStep = claimSteps.indexOf(claim.status);
   const userRole = authService.getRole();
+
   const canAssignWorkshop = userRole === "ADMIN" || userRole === "CASE_MANAGER";
+
   const canCreateAppointment =
     userRole === "CUSTOMER" &&
     !!claim.workshopId &&
     !appointment &&
-    ["CASE_ASSIGNED", "SURVEY_PENDING", "SURVEY_COMPLETED"].includes(
-      claim.status,
-    );
+    [
+      "CASE_ASSIGNED",
+      "SURVEY_PENDING",
+      "SURVEY_COMPLETED",
+      "APPROVED",
+    ].includes(claim.status);
+
   const canCompleteSurvey =
     !!survey &&
     survey.status !== "COMPLETED" &&
     (userRole === "ADMIN" || userRole === "SURVEYOR");
+
   const canAdjudicate =
     (userRole === "ADMIN" || userRole === "ADJUSTER") &&
     !adjudication &&
     claim.status === "ADJUDICATION_PENDING";
+
   const canSelectRentalVehicle =
     userRole === "CUSTOMER" &&
     rentalEligibility?.eligible === true &&
     !rentalSelection &&
     claim.status === "APPROVED";
+
   const canStartRepair =
     userRole === "WORKSHOP" && !repair && claim.status === "APPROVED";
+
   const canUpdateRepair =
     userRole === "WORKSHOP" &&
     !!repair &&
     repair.status === "IN_PROGRESS" &&
     claim.status === "REPAIR_IN_PROGRESS";
+
   const canCompleteRepair =
     userRole === "WORKSHOP" &&
     !!repair &&
     repair.status === "IN_PROGRESS" &&
     claim.status === "REPAIR_IN_PROGRESS";
+
   const canInitiatePayment =
     userRole === "CUSTOMER" && claim.status === "PAYMENT_PENDING" && !payment;
+
   const canCompletePayment =
     userRole === "CUSTOMER" &&
     !!payment &&
     payment.status === "PENDING" &&
     claim.status === "PAYMENT_PENDING";
+
   const handleCreateAppointment = async () => {
     if (!appointmentDate || !claim.workshopId) {
       return;
     }
+
     setAppointmentError("");
     setAppointmentSubmitting(true);
+
     try {
       await appointmentsService.createAppointment(claim.id, {
         appointmentDate: new Date(appointmentDate).toISOString(),
         workshopId: claim.workshopId,
       });
+
       await queryClient.invalidateQueries({
         queryKey: ["appointment", claim.id],
       });
+
       setAppointmentDate("");
     } catch (error: any) {
       setAppointmentError(
@@ -424,15 +513,19 @@ export default function ClaimDetailsPage() {
       setAppointmentSubmitting(false);
     }
   };
+
   const handleCompleteSurvey = async () => {
     if (!survey) {
       return;
     }
+
     try {
       await surveysService.completeSurvey(survey.id);
+
       await queryClient.invalidateQueries({
         queryKey: ["survey", claim.id],
       });
+
       await queryClient.invalidateQueries({
         queryKey: ["claim", claim.id],
       });
@@ -440,11 +533,13 @@ export default function ClaimDetailsPage() {
       // Query state will remain unchanged if completion fails.
     }
   };
+
   const handleAdjudicate = async () => {
     if (!decisionReason.trim()) {
       setAdjudicationError("Decision reason is required.");
       return;
     }
+
     if (
       adjudicationDecision === "APPROVED" &&
       (!approvedAmount || Number(approvedAmount) <= 0)
@@ -452,8 +547,10 @@ export default function ClaimDetailsPage() {
       setAdjudicationError("Approved amount must be greater than zero.");
       return;
     }
+
     setAdjudicationError("");
     setAdjudicationSubmitting(true);
+
     try {
       await adjudicationService.adjudicate(claim.id, {
         decision: adjudicationDecision,
@@ -462,12 +559,15 @@ export default function ClaimDetailsPage() {
           ? { approvedAmount: Number(approvedAmount) }
           : {}),
       });
+
       await queryClient.invalidateQueries({
         queryKey: ["adjudication", claim.id],
       });
+
       await queryClient.invalidateQueries({
         queryKey: ["claim", claim.id],
       });
+
       setApprovedAmount("");
       setDecisionReason("");
     } catch (error: any) {
@@ -478,13 +578,16 @@ export default function ClaimDetailsPage() {
       setAdjudicationSubmitting(false);
     }
   };
+
   const handleCreateRentalSelection = async () => {
     if (!selectedVehicleId || !rentalStartDate) {
       setRentalError("Rental vehicle and start date are required.");
       return;
     }
+
     setRentalError("");
     setRentalSubmitting(true);
+
     try {
       await rentalVehiclesService.createSelection(claim.id, {
         rentalVehicleId: selectedVehicleId,
@@ -494,9 +597,11 @@ export default function ClaimDetailsPage() {
           : {}),
         ...(rentalNotes.trim() ? { notes: rentalNotes.trim() } : {}),
       });
+
       await queryClient.invalidateQueries({
         queryKey: ["rental-selection", claim.id],
       });
+
       setSelectedVehicleId("");
       setRentalStartDate("");
       setRentalEndDate("");
@@ -510,6 +615,7 @@ export default function ClaimDetailsPage() {
       setRentalSubmitting(false);
     }
   };
+
   const openStartRepairDialog = () => {
     setRepairAction("start");
     setExpectedDeliveryDate("");
@@ -518,10 +624,12 @@ export default function ClaimDetailsPage() {
     setRepairError("");
     setRepairDialogOpen(true);
   };
+
   const openUpdateRepairDialog = () => {
     if (!repair) {
       return;
     }
+
     setRepairAction("update");
     setExpectedDeliveryDate(
       repair.expectedDeliveryDate
@@ -533,10 +641,12 @@ export default function ClaimDetailsPage() {
     setRepairError("");
     setRepairDialogOpen(true);
   };
+
   const openCompleteRepairDialog = () => {
     if (!repair) {
       return;
     }
+
     setRepairAction("complete");
     setExpectedDeliveryDate("");
     setRepairNotes(repair.repairNotes || "");
@@ -546,49 +656,60 @@ export default function ClaimDetailsPage() {
     setRepairError("");
     setRepairDialogOpen(true);
   };
+
   const handleRepairSubmit = () => {
     if (repairAction === "start") {
       setRepairSubmitting(true);
       startRepairMutation.mutate();
       return;
     }
+
     if (repairAction === "update") {
       setRepairSubmitting(true);
       updateRepairMutation.mutate();
       return;
     }
+
     if (repairAction === "complete") {
       if (!finalBillAmount || Number(finalBillAmount) < 0) {
         setRepairError("Final bill amount must be zero or greater.");
         return;
       }
+
       setRepairSubmitting(true);
       completeRepairMutation.mutate();
     }
   };
+
   const openPaymentDialog = () => {
     setPaymentMethod("ONLINE");
     setTransactionReference("");
     setPaymentError("");
     setPaymentDialogOpen(true);
   };
+
   const handlePaymentSubmit = () => {
     setPaymentError("");
+
     if (!payment) {
       setPaymentSubmitting(true);
       createPaymentMutation.mutate();
       return;
     }
+
     if (!transactionReference.trim()) {
       setPaymentError("Transaction reference is required.");
       return;
     }
+
     setPaymentSubmitting(true);
     completePaymentMutation.mutate();
   };
+
   const selectedVehicle = rentalEligibility?.vehicles?.find(
     (vehicle: RentalVehicle) => vehicle.id === selectedVehicleId,
   );
+
   return (
     <Box>
       <Button
@@ -598,13 +719,16 @@ export default function ClaimDetailsPage() {
       >
         Back to Claims
       </Button>
+
       <Typography variant="h4" sx={{ mb: 3 }}>
         Claim Details
       </Typography>
+
       <Paper sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
           Claim Progress
         </Typography>
+
         {isRejected ? (
           <Alert severity="error" sx={{ mt: 2 }}>
             This claim has been rejected.
@@ -623,43 +747,52 @@ export default function ClaimDetailsPage() {
           </Stepper>
         )}
       </Paper>
+
       <Paper sx={{ p: 3, mt: 3 }}>
         <Typography variant="h6" gutterBottom>
           General Information
         </Typography>
+
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="subtitle2">Claim Number</Typography>
             <Typography>{claim.claimNumber}</Typography>
           </Grid>
+
           <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="subtitle2">Status</Typography>
             <ClaimStatusChip status={claim.status} />
           </Grid>
+
           <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="subtitle2">Incident Date</Typography>
             <Typography>
               {new Date(claim.incidentDate).toLocaleDateString()}
             </Typography>
           </Grid>
+
           <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="subtitle2">Incident Location</Typography>
             <Typography>{claim.incidentLocation}</Typography>
           </Grid>
         </Grid>
       </Paper>
+
       <Paper sx={{ p: 3, mt: 3 }}>
         <Typography variant="h6" gutterBottom>
           Description
         </Typography>
         <Typography>{claim.description}</Typography>
       </Paper>
+
       <ClaimDocuments claimId={claim.id} />
+
       <AssignWorkshopDialog
         open={assignDialogOpen}
         onClose={() => setAssignDialogOpen(false)}
         claimId={claim.id}
       />
+
       <Paper sx={{ p: 3, mt: 3 }}>
         <Box
           sx={{
@@ -670,6 +803,7 @@ export default function ClaimDetailsPage() {
           }}
         >
           <Typography variant="h6">Workshop</Typography>
+
           {!claim.workshopId && canAssignWorkshop && (
             <Button
               variant="contained"
@@ -680,6 +814,7 @@ export default function ClaimDetailsPage() {
             </Button>
           )}
         </Box>
+
         {claim.workshopId ? (
           <>
             {workshopLoading ? (
@@ -693,6 +828,7 @@ export default function ClaimDetailsPage() {
                 </Typography>
                 <Typography>{workshop.phoneNumber}</Typography>
                 <Typography>{workshop.email}</Typography>
+
                 <Button
                   variant="outlined"
                   onClick={() => navigate(`/workshops/${workshop.id}`)}
@@ -712,11 +848,13 @@ export default function ClaimDetailsPage() {
           </Typography>
         )}
       </Paper>
+
       {claim.workshopId && (
         <Paper sx={{ p: 3, mt: 3 }}>
           <Typography variant="h6" gutterBottom>
             Appointment
           </Typography>
+
           {appointmentLoading ? (
             <CircularProgress size={24} />
           ) : appointment ? (
@@ -725,6 +863,7 @@ export default function ClaimDetailsPage() {
                 <strong>Date:</strong>{" "}
                 {new Date(appointment.appointmentDate).toLocaleString()}
               </Typography>
+
               <Typography>
                 <strong>Status:</strong> {appointment.status}
               </Typography>
@@ -734,17 +873,22 @@ export default function ClaimDetailsPage() {
               <Typography color="text.secondary">
                 Schedule an appointment with the assigned workshop.
               </Typography>
+
               <TextField
                 label="Appointment Date and Time"
                 type="datetime-local"
                 value={appointmentDate}
                 onChange={(event) => setAppointmentDate(event.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }}
+                slotProps={{
+                  inputLabel: { shrink: true },
+                }}
                 fullWidth
               />
+
               {appointmentError && (
                 <Alert severity="error">{appointmentError}</Alert>
               )}
+
               <Box>
                 <Button
                   variant="contained"
@@ -764,6 +908,7 @@ export default function ClaimDetailsPage() {
           )}
         </Paper>
       )}
+
       <Paper sx={{ p: 3, mt: 3 }}>
         <Typography variant="h6" gutterBottom>
           Case Assignment
@@ -835,10 +980,12 @@ export default function ClaimDetailsPage() {
           </Box>
         )}
       </Paper>
+
       <Paper sx={{ p: 3, mt: 3 }}>
         <Typography variant="h6" gutterBottom>
           Survey
         </Typography>
+
         {surveyLoading ? (
           <CircularProgress size={24} />
         ) : survey ? (
@@ -847,18 +994,22 @@ export default function ClaimDetailsPage() {
               <strong>Survey Created:</strong>{" "}
               {new Date(survey.createdAt).toLocaleString()}
             </Typography>
+
             <Typography>
               <strong>Status:</strong> {survey.status}
             </Typography>
+
             <Typography>
               <strong>Damage:</strong> {survey.damageDescription}
             </Typography>
+
             <Typography>
               <strong>Estimated Cost:</strong>{" "}
               {survey.estimatedCost !== null
                 ? survey.estimatedCost.toLocaleString()
                 : "Not provided"}
             </Typography>
+
             {canCompleteSurvey && (
               <Box sx={{ pt: 1 }}>
                 <Button variant="contained" onClick={handleCompleteSurvey}>
@@ -873,10 +1024,12 @@ export default function ClaimDetailsPage() {
           </Typography>
         )}
       </Paper>
+
       <Paper sx={{ p: 3, mt: 3 }}>
         <Typography variant="h6" gutterBottom>
           Adjudication
         </Typography>
+
         {adjudicationLoading ? (
           <CircularProgress size={24} />
         ) : adjudication ? (
@@ -884,15 +1037,18 @@ export default function ClaimDetailsPage() {
             <Typography>
               <strong>Decision:</strong> {adjudication.decision}
             </Typography>
+
             <Typography>
               <strong>Approved Amount:</strong>{" "}
               {adjudication.approvedAmount !== null
                 ? adjudication.approvedAmount.toLocaleString()
                 : "Not applicable"}
             </Typography>
+
             <Typography>
               <strong>Reason:</strong> {adjudication.decisionReason}
             </Typography>
+
             <Typography>
               <strong>Decided At:</strong>{" "}
               {new Date(adjudication.decidedAt).toLocaleString()}
@@ -919,6 +1075,7 @@ export default function ClaimDetailsPage() {
               <option value="APPROVED">Approve</option>
               <option value="REJECTED">Reject</option>
             </TextField>
+
             {adjudicationDecision === "APPROVED" && (
               <TextField
                 label="Approved Amount"
@@ -933,6 +1090,7 @@ export default function ClaimDetailsPage() {
                 fullWidth
               />
             )}
+
             <TextField
               label="Decision Reason"
               value={decisionReason}
@@ -941,9 +1099,11 @@ export default function ClaimDetailsPage() {
               minRows={3}
               fullWidth
             />
+
             {adjudicationError && (
               <Alert severity="error">{adjudicationError}</Alert>
             )}
+
             <Box>
               <Button
                 variant="contained"
@@ -962,10 +1122,12 @@ export default function ClaimDetailsPage() {
           </Typography>
         )}
       </Paper>
+
       <Paper sx={{ p: 3, mt: 3 }}>
         <Typography variant="h6" gutterBottom>
           Rental Vehicle
         </Typography>
+
         {rentalEligibilityLoading || rentalSelectionLoading ? (
           <CircularProgress size={24} />
         ) : rentalSelection ? (
@@ -974,32 +1136,39 @@ export default function ClaimDetailsPage() {
               {rentalSelection.rentalVehicle.make}{" "}
               {rentalSelection.rentalVehicle.model}
             </Typography>
+
             <Typography>
               <strong>Type:</strong> {rentalSelection.rentalVehicle.vehicleType}
             </Typography>
+
             <Typography>
               <strong>Start Date:</strong>{" "}
               {new Date(rentalSelection.startDate).toLocaleDateString()}
             </Typography>
+
             <Typography>
               <strong>End Date:</strong>{" "}
               {rentalSelection.endDate
                 ? new Date(rentalSelection.endDate).toLocaleDateString()
                 : "Not specified"}
             </Typography>
+
             <Typography>
               <strong>Daily Rate:</strong>{" "}
               {rentalSelection.dailyRate.toLocaleString()}
             </Typography>
+
             <Typography>
               <strong>Estimated Total:</strong>{" "}
               {rentalSelection.estimatedTotal !== null
                 ? rentalSelection.estimatedTotal.toLocaleString()
                 : "Not calculated"}
             </Typography>
+
             <Typography>
               <strong>Status:</strong> {rentalSelection.status}
             </Typography>
+
             {rentalSelection.notes && (
               <Typography>
                 <strong>Notes:</strong> {rentalSelection.notes}
@@ -1015,6 +1184,7 @@ export default function ClaimDetailsPage() {
                 rentalEligibility.rentalVehicleLimit !== undefined &&
                 ` Rental limit: ${rentalEligibility.rentalVehicleLimit.toLocaleString()}.`}
             </Alert>
+
             {canSelectRentalVehicle ? (
               <>
                 <TextField
@@ -1030,6 +1200,7 @@ export default function ClaimDetailsPage() {
                   }}
                 >
                   <option value="">Select a vehicle</option>
+
                   {rentalEligibility.vehicles?.map((vehicle) => (
                     <option key={vehicle.id} value={vehicle.id}>
                       {vehicle.make} {vehicle.model} -{" "}
@@ -1037,23 +1208,28 @@ export default function ClaimDetailsPage() {
                     </option>
                   ))}
                 </TextField>
+
                 {selectedVehicle && (
                   <Paper variant="outlined" sx={{ p: 2 }}>
                     <Stack spacing={1}>
                       <Typography variant="subtitle1">
                         {selectedVehicle.make} {selectedVehicle.model}
                       </Typography>
+
                       <Typography>
                         <strong>Type:</strong> {selectedVehicle.vehicleType}
                       </Typography>
+
                       <Typography>
                         <strong>Daily Rate:</strong>{" "}
                         {selectedVehicle.dailyRate.toLocaleString()}
                       </Typography>
+
                       <Typography>
                         <strong>Security Deposit:</strong>{" "}
                         {selectedVehicle.securityDeposit.toLocaleString()}
                       </Typography>
+
                       {selectedVehicle.description && (
                         <Typography color="text.secondary">
                           {selectedVehicle.description}
@@ -1062,22 +1238,29 @@ export default function ClaimDetailsPage() {
                     </Stack>
                   </Paper>
                 )}
+
                 <TextField
                   label="Rental Start Date"
                   type="date"
                   value={rentalStartDate}
                   onChange={(event) => setRentalStartDate(event.target.value)}
-                  slotProps={{ inputLabel: { shrink: true } }}
+                  slotProps={{
+                    inputLabel: { shrink: true },
+                  }}
                   fullWidth
                 />
+
                 <TextField
                   label="Rental End Date"
                   type="date"
                   value={rentalEndDate}
                   onChange={(event) => setRentalEndDate(event.target.value)}
-                  slotProps={{ inputLabel: { shrink: true } }}
+                  slotProps={{
+                    inputLabel: { shrink: true },
+                  }}
                   fullWidth
                 />
+
                 <TextField
                   label="Notes"
                   value={rentalNotes}
@@ -1086,7 +1269,9 @@ export default function ClaimDetailsPage() {
                   minRows={2}
                   fullWidth
                 />
+
                 {rentalError && <Alert severity="error">{rentalError}</Alert>}
+
                 <Box>
                   <Button
                     variant="contained"
@@ -1114,10 +1299,12 @@ export default function ClaimDetailsPage() {
           </Alert>
         )}
       </Paper>
+
       <Paper sx={{ p: 3, mt: 3 }}>
         <Typography variant="h6" gutterBottom>
           Workshop Repair
         </Typography>
+
         {repairLoading ? (
           <CircularProgress size={24} />
         ) : repair ? (
@@ -1130,6 +1317,7 @@ export default function ClaimDetailsPage() {
                 {repair.status.replaceAll("_", " ")}
               </Typography>
             </Box>
+
             <Box>
               <Typography variant="body2" color="text.secondary">
                 Started At
@@ -1140,6 +1328,7 @@ export default function ClaimDetailsPage() {
                   : "Not started"}
               </Typography>
             </Box>
+
             <Box>
               <Typography variant="body2" color="text.secondary">
                 Expected Delivery
@@ -1150,6 +1339,7 @@ export default function ClaimDetailsPage() {
                   : "Not provided"}
               </Typography>
             </Box>
+
             <Box>
               <Typography variant="body2" color="text.secondary">
                 Repair Notes
@@ -1158,6 +1348,7 @@ export default function ClaimDetailsPage() {
                 {repair.repairNotes || "No repair notes provided"}
               </Typography>
             </Box>
+
             {repair.completedAt && (
               <Box>
                 <Typography variant="body2" color="text.secondary">
@@ -1168,6 +1359,7 @@ export default function ClaimDetailsPage() {
                 </Typography>
               </Box>
             )}
+
             {repair.finalBillAmount !== null && (
               <Box>
                 <Typography variant="body2" color="text.secondary">
@@ -1178,6 +1370,7 @@ export default function ClaimDetailsPage() {
                 </Typography>
               </Box>
             )}
+
             {userRole === "WORKSHOP" && (
               <Stack direction="row" spacing={2} sx={{ pt: 1 }}>
                 {canUpdateRepair && (
@@ -1185,6 +1378,7 @@ export default function ClaimDetailsPage() {
                     Update Repair
                   </Button>
                 )}
+
                 {canCompleteRepair && (
                   <Button
                     variant="contained"
@@ -1202,6 +1396,7 @@ export default function ClaimDetailsPage() {
             <Typography color="text.secondary">
               This claim has been approved and is ready for workshop repair.
             </Typography>
+
             <Box>
               <Button variant="contained" onClick={openStartRepairDialog}>
                 Start Repair
@@ -1214,6 +1409,7 @@ export default function ClaimDetailsPage() {
           </Typography>
         )}
       </Paper>
+
       <Dialog
         open={repairDialogOpen}
         onClose={() => {
@@ -1231,6 +1427,7 @@ export default function ClaimDetailsPage() {
           {repairAction === "update" && "Update Repair"}
           {repairAction === "complete" && "Complete Repair"}
         </DialogTitle>
+
         <DialogContent>
           {repairAction === "start" && (
             <Typography color="text.secondary" sx={{ mb: 1 }}>
@@ -1238,6 +1435,7 @@ export default function ClaimDetailsPage() {
               Progress.
             </Typography>
           )}
+
           {repairAction !== "complete" && (
             <TextField
               fullWidth
@@ -1253,6 +1451,7 @@ export default function ClaimDetailsPage() {
               }}
             />
           )}
+
           {repairAction === "complete" && (
             <TextField
               fullWidth
@@ -1270,6 +1469,7 @@ export default function ClaimDetailsPage() {
               }}
             />
           )}
+
           <TextField
             fullWidth
             multiline
@@ -1279,12 +1479,14 @@ export default function ClaimDetailsPage() {
             value={repairNotes}
             onChange={(event) => setRepairNotes(event.target.value)}
           />
+
           {repairError && (
             <Alert severity="error" sx={{ mt: 2 }}>
               {repairError}
             </Alert>
           )}
         </DialogContent>
+
         <DialogActions>
           <Button
             onClick={() => {
@@ -1296,6 +1498,7 @@ export default function ClaimDetailsPage() {
           >
             Cancel
           </Button>
+
           <Button
             variant="contained"
             color={repairAction === "complete" ? "success" : "primary"}
@@ -1316,10 +1519,12 @@ export default function ClaimDetailsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
       <Paper sx={{ p: 3, mt: 3 }}>
         <Typography variant="h6" gutterBottom>
           Payment
         </Typography>
+
         {paymentLoading ? (
           <CircularProgress size={24} />
         ) : payment ? (
@@ -1330,6 +1535,7 @@ export default function ClaimDetailsPage() {
               </Typography>
               <Typography variant="h6">{payment.status}</Typography>
             </Box>
+
             <Box>
               <Typography variant="body2" color="text.secondary">
                 Amount
@@ -1338,12 +1544,14 @@ export default function ClaimDetailsPage() {
                 ₹{payment.amount.toLocaleString()}
               </Typography>
             </Box>
+
             <Box>
               <Typography variant="body2" color="text.secondary">
                 Payment Method
               </Typography>
               <Typography>{payment.paymentMethod}</Typography>
             </Box>
+
             {payment.transactionReference && (
               <Box>
                 <Typography variant="body2" color="text.secondary">
@@ -1352,6 +1560,7 @@ export default function ClaimDetailsPage() {
                 <Typography>{payment.transactionReference}</Typography>
               </Box>
             )}
+
             {payment.paidAt && (
               <Box>
                 <Typography variant="body2" color="text.secondary">
@@ -1362,6 +1571,7 @@ export default function ClaimDetailsPage() {
                 </Typography>
               </Box>
             )}
+
             {canCompletePayment && (
               <Box>
                 <Button
@@ -1379,12 +1589,14 @@ export default function ClaimDetailsPage() {
             <Alert severity="info">
               Your repair is complete and payment is now required.
             </Alert>
+
             {repair?.finalBillAmount !== null &&
               repair?.finalBillAmount !== undefined && (
                 <Typography variant="h5">
                   Amount Due: ₹{repair.finalBillAmount.toLocaleString()}
                 </Typography>
               )}
+
             <Box>
               <Button variant="contained" onClick={openPaymentDialog}>
                 Initiate Payment
@@ -1397,6 +1609,7 @@ export default function ClaimDetailsPage() {
           </Typography>
         )}
       </Paper>
+
       <Dialog
         open={paymentDialogOpen}
         onClose={() => {
@@ -1411,18 +1624,21 @@ export default function ClaimDetailsPage() {
         <DialogTitle>
           {payment ? "Complete Payment" : "Initiate Payment"}
         </DialogTitle>
+
         <DialogContent>
           {!payment ? (
             <Stack spacing={2} sx={{ pt: 1 }}>
               <Typography color="text.secondary">
                 Payment amount is based on the final repair bill.
               </Typography>
+
               {repair?.finalBillAmount !== null &&
                 repair?.finalBillAmount !== undefined && (
                   <Typography variant="h5">
                     ₹{repair.finalBillAmount.toLocaleString()}
                   </Typography>
                 )}
+
               <TextField
                 select
                 fullWidth
@@ -1444,9 +1660,11 @@ export default function ClaimDetailsPage() {
               <Typography color="text.secondary">
                 Enter the transaction reference returned by the payment process.
               </Typography>
+
               <Typography variant="h5">
                 ₹{payment.amount.toLocaleString()}
               </Typography>
+
               <TextField
                 fullWidth
                 required
@@ -1458,12 +1676,14 @@ export default function ClaimDetailsPage() {
               />
             </Stack>
           )}
+
           {paymentError && (
             <Alert severity="error" sx={{ mt: 2 }}>
               {paymentError}
             </Alert>
           )}
         </DialogContent>
+
         <DialogActions>
           <Button
             onClick={() => {
@@ -1474,6 +1694,7 @@ export default function ClaimDetailsPage() {
           >
             Cancel
           </Button>
+
           <Button
             variant="contained"
             color="success"
@@ -1490,10 +1711,12 @@ export default function ClaimDetailsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
       <Paper sx={{ p: 3, mt: 3 }}>
         <Typography variant="h6" gutterBottom>
           Audit History
         </Typography>
+
         {auditLoading ? (
           <CircularProgress size={24} />
         ) : auditLogs && auditLogs.length > 0 ? (
@@ -1512,18 +1735,22 @@ export default function ClaimDetailsPage() {
                     <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
                       {audit.action.replaceAll("_", " ")}
                     </Typography>
+
                     <Typography variant="body2" color="text.secondary">
                       {new Date(audit.createdAt).toLocaleString()}
                     </Typography>
                   </Box>
+
                   {audit.description && (
                     <Typography>{audit.description}</Typography>
                   )}
+
                   {audit.actorUserId && (
                     <Typography variant="body2" color="text.secondary">
                       Actor: {audit.actorUserId}
                     </Typography>
                   )}
+
                   {(audit.oldValue || audit.newValue) && (
                     <Box>
                       {audit.oldValue && (
@@ -1531,6 +1758,7 @@ export default function ClaimDetailsPage() {
                           <strong>Previous:</strong> {audit.oldValue}
                         </Typography>
                       )}
+
                       {audit.newValue && (
                         <Typography variant="body2">
                           <strong>New:</strong> {audit.newValue}

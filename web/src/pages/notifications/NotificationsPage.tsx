@@ -49,7 +49,8 @@ export default function NotificationsPage() {
     return <Alert severity="error">Unable to load notifications.</Alert>;
   }
   const unreadCount =
-    notifications?.filter((notification) => !notification.isRead).length ?? 0;
+    notifications?.filter((notification) => notification.status === "UNREAD")
+      .length ?? 0;
   return (
     <Box>
       <Box
@@ -84,11 +85,14 @@ export default function NotificationsPage() {
               key={notification.id}
               sx={{
                 p: 3,
-                borderLeft: notification.isRead ? undefined : "4px solid",
-                borderColor: notification.isRead ? undefined : "primary.main",
-                backgroundColor: notification.isRead
-                  ? "background.paper"
-                  : "action.hover",
+                borderLeft:
+                  notification.status === "READ" ? undefined : "4px solid",
+                borderColor:
+                  notification.status === "READ" ? undefined : "primary.main",
+                backgroundColor:
+                  notification.status === "READ"
+                    ? "background.paper"
+                    : "action.hover",
               }}
             >
               <Stack spacing={1.5}>
@@ -104,7 +108,7 @@ export default function NotificationsPage() {
                     {notificationLabels[notification.type] ??
                       notification.type.replaceAll("_", " ")}
                   </Typography>
-                  {!notification.isRead && (
+                  {notification.status === "UNREAD" && (
                     <Chip label="Unread" size="small" color="primary" />
                   )}
                 </Box>
@@ -117,11 +121,12 @@ export default function NotificationsPage() {
                     variant="outlined"
                     size="small"
                     disabled={
-                      notification.isRead || markAsReadMutation.isPending
+                      notification.status === "READ" ||
+                      markAsReadMutation.isPending
                     }
                     onClick={() => markAsReadMutation.mutate(notification.id)}
                   >
-                    {notification.isRead ? "Read" : "Mark as Read"}
+                    {notification.status === "READ" ? "Read" : "Mark as Read"}
                   </Button>
                 </Box>
               </Stack>
