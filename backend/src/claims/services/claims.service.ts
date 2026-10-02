@@ -79,6 +79,23 @@ export class ClaimsService {
         return this.claimsRepository.findBySurveyor(user.id);
       case RoleName.ADJUSTER:
         return this.claimsRepository.findForAdjudication();
+      case RoleName.WORKSHOP: {
+        const workshopUser = await this.workshopsRepository.findUserById(
+          user.id,
+        );
+
+        if (!workshopUser) {
+          throw new UnauthorizedException('Workshop user not found');
+        }
+
+        if (!workshopUser.workshopId) {
+          throw new UnauthorizedException(
+            'Workshop user is not assigned to a workshop',
+          );
+        }
+
+        return this.claimsRepository.findByWorkshop(workshopUser.workshopId);
+      }
       default:
         throw new UnauthorizedException('Unauthorized Access');
     }
@@ -99,6 +116,25 @@ export class ClaimsService {
     ) {
       return claim;
     }
+
+    if (user.role === RoleName.WORKSHOP) {
+      const workshopUser = await this.workshopsRepository.findUserById(user.id);
+
+      if (!workshopUser?.workshopId) {
+        throw new UnauthorizedException(
+          'Workshop user is not assigned to a workshop',
+        );
+      }
+
+      if (claim.workshopId !== workshopUser.workshopId) {
+        throw new UnauthorizedException(
+          'You are not authorized to access this claim',
+        );
+      }
+
+      return claim;
+    }
+
     throw new UnauthorizedException('Unauthorized Access');
   }
 

@@ -1187,27 +1187,31 @@ export default function ClaimDetailsPage() {
 
             {canSelectRentalVehicle ? (
               <>
-                <TextField
-                  select
-                  label="Rental Vehicle"
-                  value={selectedVehicleId}
-                  onChange={(event) => setSelectedVehicleId(event.target.value)}
-                  fullWidth
-                  slotProps={{
-                    select: {
-                      native: true,
-                    },
-                  }}
-                >
-                  <option value="">Select a vehicle</option>
+                <FormControl fullWidth>
+                  <InputLabel id="rental-vehicle-label">
+                    Rental Vehicle
+                  </InputLabel>
 
-                  {rentalEligibility.vehicles?.map((vehicle) => (
-                    <option key={vehicle.id} value={vehicle.id}>
-                      {vehicle.make} {vehicle.model} -{" "}
-                      {vehicle.dailyRate.toLocaleString()} / day
-                    </option>
-                  ))}
-                </TextField>
+                  <Select
+                    labelId="rental-vehicle-label"
+                    value={selectedVehicleId}
+                    onChange={(event) =>
+                      setSelectedVehicleId(event.target.value)
+                    }
+                    label="Rental Vehicle"
+                  >
+                    <MenuItem value="">
+                      <em>Select a vehicle</em>
+                    </MenuItem>
+
+                    {rentalEligibility.vehicles?.map((vehicle) => (
+                      <MenuItem key={vehicle.id} value={vehicle.id}>
+                        {vehicle.make} {vehicle.model} -{" "}
+                        {vehicle.dailyRate.toLocaleString()} / day
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
 
                 {selectedVehicle && (
                   <Paper variant="outlined" sx={{ p: 2 }}>

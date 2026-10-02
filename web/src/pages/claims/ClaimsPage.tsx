@@ -11,9 +11,9 @@ import {
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import ClaimStatusChip from "../../components/common/ClaimStatusChip";
 import { useNavigate } from "react-router-dom";
+import authService from "../../services/auth.service";
 
 export default function ClaimsPage() {
-
   const navigate = useNavigate();
 
   const {
@@ -24,6 +24,9 @@ export default function ClaimsPage() {
     queryKey: ["claims"],
     queryFn: () => claimsService.getClaims(),
   });
+
+  const role = authService.getRole();
+  const canCreateClaim = role === "CUSTOMER";
 
   const columns: GridColDef<Claim>[] = [
     {
@@ -63,32 +66,34 @@ export default function ClaimsPage() {
     return <Alert severity="error">Unable to load claims.</Alert>;
   }
 
-return (
-  <Box>
-    <Box
-      sx={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        mb: 3,
-      }}
-    >
-      <Typography variant="h4">Claims</Typography>
+  return (
+    <Box>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 3,
+        }}
+      >
+        <Typography variant="h4">Claims</Typography>
 
-      <Button variant="contained" onClick={() => navigate("/claims/new")}>
-        Create Claim
-      </Button>
-    </Box>
+        {canCreateClaim && (
+          <Button variant="contained" onClick={() => navigate("/claims/new")}>
+            Create Claim
+          </Button>
+        )}
+      </Box>
 
-    <Box sx={{ height: 500, width: "100%" }}>
-      <DataGrid
-        rows={claims ?? []}
-        columns={columns}
-        getRowId={(row) => row.id}
-        pageSizeOptions={[5, 10, 20]}
-        onRowClick={(params) => navigate(`/claims/${params.row.id}`)}
-      />
+      <Box sx={{ height: 500, width: "100%" }}>
+        <DataGrid
+          rows={claims ?? []}
+          columns={columns}
+          getRowId={(row) => row.id}
+          pageSizeOptions={[5, 10, 20]}
+          onRowClick={(params) => navigate(`/claims/${params.row.id}`)}
+        />
+      </Box>
     </Box>
-  </Box>
-);
+  );
 }

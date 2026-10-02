@@ -185,4 +185,33 @@ export class ClaimsRepository {
       },
     });
   }
+
+  async findByWorkshop(workshopId: string) {
+    return this.prismaService.claim.findMany({
+      where: {
+        workshopId,
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            roleId: true,
+            status: true,
+            lastLogin: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        repair: true,
+        workshop: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
 }
