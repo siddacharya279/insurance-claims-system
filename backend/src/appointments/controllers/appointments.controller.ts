@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -11,6 +12,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { AppointmentsService } from '../services/appointments.service';
 import { CreateAppointmentDto } from '../dto/create-appointment.dto';
+import { UpdateAppointmentStatusDto } from '../dto/update-appointment-status.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { JwtUser } from 'src/common/interfaces/jwt-user.interface';
 
@@ -46,5 +48,15 @@ export class AppointmentsController {
     @Req() req: { user: JwtUser },
   ) {
     return this.appointmentsService.findByClaimId(claimId, req.user);
+  }
+
+  @Patch(':id/status')
+  @ApiOperation({ summary: 'Update appointment status' })
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateAppointmentStatusDto,
+    @Req() req: { user: JwtUser },
+  ) {
+    return this.appointmentsService.updateStatus(id, dto.status, req.user);
   }
 }

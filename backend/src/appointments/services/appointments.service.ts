@@ -10,6 +10,7 @@ import { ClaimsRepository } from 'src/claims/repositories/claims.repository';
 import { WorkshopsRepository } from 'src/workshops/repositories/workshops.repository';
 import { RoleName } from 'src/common/enums/roles.enum';
 import { JwtUser } from 'src/common/interfaces/jwt-user.interface';
+import { AppointmentStatus } from '@prisma/client';
 
 @Injectable()
 export class AppointmentsService {
@@ -141,5 +142,49 @@ export class AppointmentsService {
     }
 
     return appointment;
+  }
+
+  async updateStatus(id: string, status: AppointmentStatus, user: JwtUser) {
+    const appointment = await this.appointmentsRepository.findById(id);
+
+    if (!appointment) {
+      throw new NotFoundException('Appointment not found');
+    }
+
+    const allowedRoles: RoleName[] = [
+      RoleName.ADMIN,
+      RoleName.CASE_MANAGER,
+      RoleName.WORKSHOP,
+    ];
+
+    if (!allowedRoles.includes(user.role as RoleName)) {
+      throw new ForbiddenException(
+        'You are not allowed to update appointment status',
+      );
+    }
+
+    const validTransitions: Record<AppointmentStatus, AppointmentStatus[]> = {
+      [AppointmentStatus.SCHEDULED]: [
+        AppointmentStatus.CONFIRMED,
+        AppointmentStatus.CANCELLED,
+      ],
+
+      [AppointmentStatus.CONFIRMED]: [
+        AppointmentStatus.COMPLETED,
+        AppointmentStatus.CANCELLED,
+      ],
+
+      [AppointmentStatus.COMPLETED]: [],
+
+      [AppointmentStatus.CANCELLED]: [],
+    };
+
+    if (!validTransitions[appointment.status].includes(status)) {
+      throw new BadRequestException(
+        `Cannot change appointment status from ${appointment.status} to ${status}`,
+      );
+    }
+
+    return this.appointmentsRepository.updateStatus(id, status);
   }
 }

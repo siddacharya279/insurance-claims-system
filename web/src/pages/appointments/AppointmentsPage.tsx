@@ -23,7 +23,9 @@ import AddIcon from "@mui/icons-material/Add";
 import claimsService from "../../services/claims.service";
 import appointmentsService, {
   type Appointment,
+  type AppointmentStatus,
 } from "../../services/appointments.service";
+import authService from "../../services/auth.service";
 import workshopsService from "../../services/workshops.service";
 import type { Claim } from "../../types/claim";
 import type { Workshop } from "../../types/workshop";
@@ -35,11 +37,24 @@ interface AppointmentRow extends Appointment {
 
 export default function AppointmentsPage() {
   const queryClient = useQueryClient();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedClaimId, setSelectedClaimId] = useState("");
   const [selectedWorkshopId, setSelectedWorkshopId] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+
+  const userRole = authService.getRole();
+
+  const canScheduleAppointment = ["ADMIN", "CASE_MANAGER"].includes(
+    userRole ?? "",
+  );
+
+  const canUpdateAppointmentStatus = [
+    "ADMIN",
+    "CASE_MANAGER",
+    "WORKSHOP",
+  ].includes(userRole ?? "");
 
   const {
     data: claims,
@@ -71,6 +86,7 @@ export default function AppointmentsPage() {
           const appointment = await appointmentsService.getAppointment(
             claim.id,
           );
+
           return appointment
             ? {
                 ...appointment,
@@ -83,6 +99,7 @@ export default function AppointmentsPage() {
             : null;
         }),
       );
+
       return results.filter(
         (appointment): appointment is AppointmentRow => appointment !== null,
       );
@@ -95,21 +112,40 @@ export default function AppointmentsPage() {
       if (!selectedClaimId || !selectedWorkshopId || !appointmentDate) {
         throw new Error("All appointment fields are required");
       }
+
       return appointmentsService.createAppointment(selectedClaimId, {
         workshopId: selectedWorkshopId,
         appointmentDate: new Date(appointmentDate).toISOString(),
       });
     },
+
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["all-appointments"] });
+      queryClient.invalidateQueries({
+        queryKey: ["all-appointments"],
+      });
+
       queryClient.invalidateQueries({
         queryKey: ["appointment", selectedClaimId],
       });
+
       setDialogOpen(false);
       setSelectedClaimId("");
       setSelectedWorkshopId("");
       setAppointmentDate("");
       setSuccessMessage("Appointment scheduled successfully.");
+    },
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: AppointmentStatus }) =>
+      appointmentsService.updateAppointmentStatus(id, status),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["all-appointments"],
+      });
+
+      setSuccessMessage("Appointment status updated successfully.");
     },
   });
 
@@ -137,6 +173,7 @@ export default function AppointmentsPage() {
     if (!selectedClaim?.workshopId) {
       return [];
     }
+
     return (workshops ?? []).filter(
       (workshop: Workshop) => workshop.id === selectedClaim.workshopId,
     );
@@ -166,6 +203,90 @@ export default function AppointmentsPage() {
     },
   ];
 
+  if (canUpdateAppointmentStatus) {
+    columns.push({
+      field: "actions",
+      headerName: "Actions",
+      flex: 1.5,
+      minWidth: 220,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => {
+        const appointment = params.row;
+
+        if (appointment.status === "SCHEDULED") {
+          return (
+            <Stack direction="row" spacing={1}>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={statusMutation.isPending}
+                onClick={() =>
+                  statusMutation.mutate({
+                    id: appointment.id,
+                    status: "CONFIRMED",
+                  })
+                }
+              >
+                Confirm
+              </Button>
+
+              <Button
+                size="small"
+                color="error"
+                disabled={statusMutation.isPending}
+                onClick={() =>
+                  statusMutation.mutate({
+                    id: appointment.id,
+                    status: "CANCELLED",
+                  })
+                }
+              >
+                Cancel
+              </Button>
+            </Stack>
+          );
+        }
+
+        if (appointment.status === "CONFIRMED") {
+          return (
+            <Stack direction="row" spacing={1}>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={statusMutation.isPending}
+                onClick={() =>
+                  statusMutation.mutate({
+                    id: appointment.id,
+                    status: "COMPLETED",
+                  })
+                }
+              >
+                Complete
+              </Button>
+
+              <Button
+                size="small"
+                color="error"
+                disabled={statusMutation.isPending}
+                onClick={() =>
+                  statusMutation.mutate({
+                    id: appointment.id,
+                    status: "CANCELLED",
+                  })
+                }
+              >
+                Cancel
+              </Button>
+            </Stack>
+          );
+        }
+
+        return null;
+      },
+    });
+  }
+
   if (claimsLoading || workshopsLoading || appointmentsLoading) {
     return <CircularProgress />;
   }
@@ -186,21 +307,25 @@ export default function AppointmentsPage() {
       >
         <Box>
           <Typography variant="h4">Appointments</Typography>
+
           <Typography color="text.secondary">
             Manage workshop appointments for insurance claims.
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setDialogOpen(true)}
-          disabled={availableClaims.length === 0}
-        >
-          Schedule Appointment
-        </Button>
+
+        {canScheduleAppointment && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setDialogOpen(true)}
+            disabled={availableClaims.length === 0}
+          >
+            Schedule Appointment
+          </Button>
+        )}
       </Box>
 
-      {availableClaims.length === 0 && (
+      {canScheduleAppointment && availableClaims.length === 0 && (
         <Alert severity="info" sx={{ mb: 2 }}>
           There are currently no claims eligible for appointment scheduling.
         </Alert>
@@ -232,95 +357,110 @@ export default function AppointmentsPage() {
         />
       </Box>
 
-      <Dialog
-        open={dialogOpen}
-        onClose={() => {
-          if (!createMutation.isPending) {
-            setDialogOpen(false);
-          }
-        }}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Schedule Appointment</DialogTitle>
-        <DialogContent>
-          <Stack spacing={3} sx={{ mt: 1 }}>
-            <FormControl fullWidth>
-              <InputLabel id="appointment-claim-label">Claim</InputLabel>
-              <Select
-                labelId="appointment-claim-label"
-                value={selectedClaimId}
-                label="Claim"
-                onChange={(event) => {
-                  setSelectedClaimId(event.target.value);
-                  setSelectedWorkshopId("");
+      {canScheduleAppointment && (
+        <Dialog
+          open={dialogOpen}
+          onClose={() => {
+            if (!createMutation.isPending) {
+              setDialogOpen(false);
+            }
+          }}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>Schedule Appointment</DialogTitle>
+
+          <DialogContent>
+            <Stack spacing={3} sx={{ mt: 1 }}>
+              <FormControl fullWidth>
+                <InputLabel id="appointment-claim-label">Claim</InputLabel>
+
+                <Select
+                  labelId="appointment-claim-label"
+                  value={selectedClaimId}
+                  label="Claim"
+                  onChange={(event) => {
+                    setSelectedClaimId(event.target.value);
+                    setSelectedWorkshopId("");
+                  }}
+                  disabled={createMutation.isPending}
+                >
+                  {availableClaims.map((claim) => (
+                    <MenuItem key={claim.id} value={claim.id}>
+                      {claim.claimNumber} - {claim.title}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth disabled={!selectedClaimId}>
+                <InputLabel id="appointment-workshop-label">
+                  Workshop
+                </InputLabel>
+
+                <Select
+                  labelId="appointment-workshop-label"
+                  value={selectedWorkshopId}
+                  label="Workshop"
+                  onChange={(event) =>
+                    setSelectedWorkshopId(event.target.value)
+                  }
+                  disabled={createMutation.isPending}
+                >
+                  {availableWorkshops.map((workshop) => (
+                    <MenuItem key={workshop.id} value={workshop.id}>
+                      {workshop.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <TextField
+                label="Appointment Date & Time"
+                type="datetime-local"
+                value={appointmentDate}
+                onChange={(event) => setAppointmentDate(event.target.value)}
+                fullWidth
+                slotProps={{
+                  inputLabel: {
+                    shrink: true,
+                  },
                 }}
                 disabled={createMutation.isPending}
-              >
-                {availableClaims.map((claim) => (
-                  <MenuItem key={claim.id} value={claim.id}>
-                    {claim.claimNumber} - {claim.title}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+              />
 
-            <FormControl fullWidth disabled={!selectedClaimId}>
-              <InputLabel id="appointment-workshop-label">Workshop</InputLabel>
-              <Select
-                labelId="appointment-workshop-label"
-                value={selectedWorkshopId}
-                label="Workshop"
-                onChange={(event) => setSelectedWorkshopId(event.target.value)}
-                disabled={createMutation.isPending}
-              >
-                {availableWorkshops.map((workshop) => (
-                  <MenuItem key={workshop.id} value={workshop.id}>
-                    {workshop.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+              {createMutation.isError && (
+                <Alert severity="error">
+                  Unable to schedule the appointment. Please check the claim,
+                  workshop and appointment date.
+                </Alert>
+              )}
+            </Stack>
+          </DialogContent>
 
-            <TextField
-              label="Appointment Date & Time"
-              type="datetime-local"
-              value={appointmentDate}
-              onChange={(event) => setAppointmentDate(event.target.value)}
-              fullWidth
-              slotProps={{ inputLabel: { shrink: true } }}
+          <DialogActions>
+            <Button
+              onClick={() => setDialogOpen(false)}
               disabled={createMutation.isPending}
-            />
+            >
+              Cancel
+            </Button>
 
-            {createMutation.isError && (
-              <Alert severity="error">
-                Unable to schedule the appointment. Please check the claim,
-                workshop and appointment date.
-              </Alert>
-            )}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setDialogOpen(false)}
-            disabled={createMutation.isPending}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => createMutation.mutate()}
-            disabled={
-              !selectedClaimId ||
-              !selectedWorkshopId ||
-              !appointmentDate ||
-              createMutation.isPending
-            }
-          >
-            {createMutation.isPending ? "Scheduling..." : "Schedule"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+            <Button
+              variant="contained"
+              onClick={() => createMutation.mutate()}
+              disabled={
+                !selectedClaimId ||
+                !selectedWorkshopId ||
+                !appointmentDate ||
+                createMutation.isPending
+              }
+            >
+              {createMutation.isPending ? "Scheduling..." : "Schedule"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       <Snackbar
         open={!!successMessage}
