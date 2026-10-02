@@ -6,9 +6,16 @@ import { UsersModule } from 'src/users/users.module';
 import { ClaimsModule } from 'src/claims/claims.module';
 import { NotificationsModule } from 'src/notifications/notifications.module';
 import { AuditModule } from 'src/audit/audit.module';
+import { WorkshopsModule } from 'src/workshops/workshops.module';
 
 @Module({
-  imports: [UsersModule, ClaimsModule, NotificationsModule, AuditModule],
+  imports: [
+    UsersModule,
+    ClaimsModule,
+    NotificationsModule,
+    AuditModule,
+    WorkshopsModule,
+  ],
   providers: [SurveysService, SurveysRepository],
   controllers: [SurveysController],
 })

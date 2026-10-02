@@ -13,6 +13,7 @@ import { AdjudicateClaimDto } from '../dto/adjudicate-claim.dto';
 import { AdjudicationRepository } from '../repositories/adjudication.repository';
 import { NotificationsService } from 'src/notifications/services/notifications.service';
 import { AuditService } from 'src/audit/services/audit.service';
+import { WorkshopsRepository } from 'src/workshops/repositories/workshops.repository';
 @Injectable()
 export class AdjudicationService {
   constructor(
@@ -21,6 +22,7 @@ export class AdjudicationService {
     private readonly usersService: UsersService,
     private readonly notificationsService: NotificationsService,
     private readonly auditService: AuditService,
+    private readonly workshopsRepository: WorkshopsRepository,
   ) {}
   async getForReview(claimId: string, actor: JwtUser) {
     this.assertAdjudicator(actor);
@@ -69,6 +71,28 @@ export class AdjudicationService {
           'You are not authorized to view this adjudication',
         );
       }
+      return adjudication;
+    }
+    if (actor.role === RoleName.WORKSHOP) {
+      const claim = await this.claimsRepository.findById(claimId);
+
+      if (!claim) {
+        throw new NotFoundException('Claim not found');
+      }
+
+      const workshopUser = await this.workshopsRepository.findUserById(
+        actor.id,
+      );
+
+      if (
+        !workshopUser?.workshopId ||
+        claim.workshopId !== workshopUser.workshopId
+      ) {
+        throw new UnauthorizedException(
+          'You are not authorized to view this adjudication',
+        );
+      }
+
       return adjudication;
     }
     throw new UnauthorizedException(

@@ -271,6 +271,7 @@ export class RentalVehiclesService {
       RoleName.CASE_MANAGER,
       RoleName.AUDITOR,
       RoleName.CUSTOMER,
+      RoleName.WORKSHOP,
     ];
 
     if (!allowedRoles.includes(user.role as RoleName)) {

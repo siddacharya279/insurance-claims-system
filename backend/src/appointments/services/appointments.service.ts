@@ -31,6 +31,7 @@ export class AppointmentsService {
       RoleName.CASE_MANAGER,
       RoleName.WORKSHOP,
       RoleName.CUSTOMER,
+      RoleName.AUDITOR,
     ];
 
     if (!allowedRoles.includes(user.role as RoleName)) {

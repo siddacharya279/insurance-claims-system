@@ -15,6 +15,7 @@ import { JwtUser } from 'src/common/interfaces/jwt-user.interface';
 import { UsersService } from 'src/users/services/users.service';
 import { NotificationsService } from 'src/notifications/services/notifications.service';
 import { AuditService } from 'src/audit/services/audit.service';
+import { WorkshopsRepository } from 'src/workshops/repositories/workshops.repository';
 
 @Injectable()
 export class SurveysService {
@@ -24,6 +25,7 @@ export class SurveysService {
     private readonly usersService: UsersService,
     private readonly notificationsService: NotificationsService,
     private readonly auditService: AuditService,
+    private readonly workshopsRepository: WorkshopsRepository,
   ) {}
 
   async create(createSurveyDto: CreateSurveyDto, user: JwtUser) {
@@ -182,12 +184,19 @@ export class SurveysService {
       throw new NotFoundException('Claim not found');
     }
 
+    const hasWorkshopAccess =
+      user.role === RoleName.WORKSHOP &&
+      claim.workshopId !== null &&
+      (await this.workshopsRepository.findUserById(user.id))?.workshopId ===
+        claim.workshopId;
+
     const hasAccess =
       user.role === RoleName.ADMIN ||
       user.role === RoleName.CASE_MANAGER ||
       user.role === RoleName.AUDITOR ||
       (user.role === RoleName.SURVEYOR && survey.surveyorId === user.id) ||
-      (user.role === RoleName.CUSTOMER && claim.customerId === user.id);
+      (user.role === RoleName.CUSTOMER && claim.customerId === user.id) ||
+      hasWorkshopAccess;
 
     if (!hasAccess) {
       throw new UnauthorizedException('Unauthorized Access');
@@ -209,12 +218,19 @@ export class SurveysService {
       throw new NotFoundException('Survey not found');
     }
 
+    const hasWorkshopAccess =
+      user.role === RoleName.WORKSHOP &&
+      claim.workshopId !== null &&
+      (await this.workshopsRepository.findUserById(user.id))?.workshopId ===
+        claim.workshopId;
+
     const hasAccess =
       user.role === RoleName.ADMIN ||
       user.role === RoleName.CASE_MANAGER ||
       user.role === RoleName.AUDITOR ||
       (user.role === RoleName.SURVEYOR && survey.surveyorId === user.id) ||
-      (user.role === RoleName.CUSTOMER && claim.customerId === user.id);
+      (user.role === RoleName.CUSTOMER && claim.customerId === user.id) ||
+      hasWorkshopAccess;
 
     if (!hasAccess) {
       throw new UnauthorizedException('Unauthorized Access');

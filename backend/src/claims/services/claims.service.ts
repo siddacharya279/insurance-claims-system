@@ -72,6 +72,7 @@ export class ClaimsService {
     switch (user.role) {
       case RoleName.ADMIN:
       case RoleName.CASE_MANAGER:
+      case RoleName.AUDITOR:
         return this.claimsRepository.findAll();
       case RoleName.CUSTOMER:
         return this.claimsRepository.findByCustomer(user.id);
@@ -109,6 +110,7 @@ export class ClaimsService {
     if (
       user.role === RoleName.ADMIN ||
       user.role === RoleName.CASE_MANAGER ||
+      user.role === RoleName.AUDITOR ||
       user.role === RoleName.ADJUSTER ||
       (user.role === RoleName.CUSTOMER && claim.customerId === user.id) ||
       (user.role === RoleName.SURVEYOR &&

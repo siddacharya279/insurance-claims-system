@@ -430,7 +430,10 @@ export default function ClaimDetailsPage() {
   }
 
   const isRejected = claim.status === "REJECTED";
-  const currentStep = claimSteps.indexOf(claim.status);
+  const currentStep =
+    claim.status === "CLOSED"
+      ? claimSteps.length
+      : claimSteps.indexOf(claim.status);
   const userRole = authService.getRole();
 
   const canAssignWorkshop = userRole === "ADMIN" || userRole === "CASE_MANAGER";
@@ -485,6 +488,10 @@ export default function ClaimDetailsPage() {
     !!payment &&
     payment.status === "PENDING" &&
     claim.status === "PAYMENT_PENDING";
+
+  const canViewAuditHistory = ["ADMIN", "CASE_MANAGER", "AUDITOR"].includes(
+    userRole ?? "",
+  );
 
   const handleCreateAppointment = async () => {
     if (!appointmentDate || !claim.workshopId) {
@@ -1716,70 +1723,75 @@ export default function ClaimDetailsPage() {
         </DialogActions>
       </Dialog>
 
-      <Paper sx={{ p: 3, mt: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Audit History
-        </Typography>
-
-        {auditLoading ? (
-          <CircularProgress size={24} />
-        ) : auditLogs && auditLogs.length > 0 ? (
-          <Stack spacing={2}>
-            {auditLogs.map((audit) => (
-              <Paper key={audit.id} variant="outlined" sx={{ p: 2 }}>
-                <Stack spacing={1}>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: 2,
-                    }}
-                  >
-                    <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
-                      {audit.action.replaceAll("_", " ")}
-                    </Typography>
-
-                    <Typography variant="body2" color="text.secondary">
-                      {new Date(audit.createdAt).toLocaleString()}
-                    </Typography>
-                  </Box>
-
-                  {audit.description && (
-                    <Typography>{audit.description}</Typography>
-                  )}
-
-                  {audit.actorUserId && (
-                    <Typography variant="body2" color="text.secondary">
-                      Actor: {audit.actorUserId}
-                    </Typography>
-                  )}
-
-                  {(audit.oldValue || audit.newValue) && (
-                    <Box>
-                      {audit.oldValue && (
-                        <Typography variant="body2">
-                          <strong>Previous:</strong> {audit.oldValue}
-                        </Typography>
-                      )}
-
-                      {audit.newValue && (
-                        <Typography variant="body2">
-                          <strong>New:</strong> {audit.newValue}
-                        </Typography>
-                      )}
-                    </Box>
-                  )}
-                </Stack>
-              </Paper>
-            ))}
-          </Stack>
-        ) : (
-          <Typography color="text.secondary">
-            No audit history available for this claim.
+      {canViewAuditHistory && (
+        <Paper sx={{ p: 3, mt: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Audit History
           </Typography>
-        )}
-      </Paper>
+
+          {auditLoading ? (
+            <CircularProgress size={24} />
+          ) : auditLogs && auditLogs.length > 0 ? (
+            <Stack spacing={2}>
+              {auditLogs.map((audit) => (
+                <Paper key={audit.id} variant="outlined" sx={{ p: 2 }}>
+                  <Stack spacing={1}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 2,
+                      }}
+                    >
+                      <Typography
+                        variant="subtitle1"
+                        sx={{ fontWeight: "bold" }}
+                      >
+                        {audit.action.replaceAll("_", " ")}
+                      </Typography>
+
+                      <Typography variant="body2" color="text.secondary">
+                        {new Date(audit.createdAt).toLocaleString()}
+                      </Typography>
+                    </Box>
+
+                    {audit.description && (
+                      <Typography>{audit.description}</Typography>
+                    )}
+
+                    {audit.actorUserId && (
+                      <Typography variant="body2" color="text.secondary">
+                        Actor: {audit.actorUserId}
+                      </Typography>
+                    )}
+
+                    {(audit.oldValue || audit.newValue) && (
+                      <Box>
+                        {audit.oldValue && (
+                          <Typography variant="body2">
+                            <strong>Previous:</strong> {audit.oldValue}
+                          </Typography>
+                        )}
+
+                        {audit.newValue && (
+                          <Typography variant="body2">
+                            <strong>New:</strong> {audit.newValue}
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
+          ) : (
+            <Typography color="text.secondary">
+              No audit history available for this claim.
+            </Typography>
+          )}
+        </Paper>
+      )}
     </Box>
   );
 }
