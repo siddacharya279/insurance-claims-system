@@ -12,6 +12,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { useAuth } from "@/context/AuthContext";
 import { getClaim, type Claim } from "@/services/claims";
+import { getWorkshop, Workshop } from "@/services/workshops";
 
 export default function ClaimDetailsScreen() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function ClaimDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [workshop, setWorkshop] = useState<Workshop | null>(null);
 
   const loadClaim = useCallback(
     async (refresh = false) => {
@@ -45,6 +47,17 @@ export default function ClaimDetailsScreen() {
 
         const result = await getClaim(id, token);
         setClaim(result);
+        if (result.workshopId) {
+          try {
+            const workshopResult = await getWorkshop(result.workshopId, token);
+
+            setWorkshop(workshopResult);
+          } catch {
+            setWorkshop(null);
+          }
+        } else {
+          setWorkshop(null);
+        }
       } catch (err: any) {
         setError(err?.message ?? "Unable to load claim details.");
       } finally {
@@ -176,7 +189,26 @@ export default function ClaimDetailsScreen() {
 
         {claim.workshopId ? (
           <>
-            <InfoRow label="Workshop ID" value={claim.workshopId} />
+            {workshop ? (
+              <>
+                <InfoRow label="Workshop" value={workshop.name} />
+
+                <InfoRow label="Address" value={workshop.address} />
+
+                <InfoRow
+                  label="Location"
+                  value={`${workshop.city}, ${workshop.state}`}
+                />
+
+                {workshop.phoneNumber ? (
+                  <InfoRow label="Phone" value={workshop.phoneNumber} />
+                ) : null}
+              </>
+            ) : (
+              <Text style={styles.sectionText}>
+                Loading workshop details...
+              </Text>
+            )}
 
             <Pressable
               style={styles.actionButton}
